@@ -169,6 +169,9 @@ bash script/verify_release.sh --public
 
 提交改动前请阅读 [项目规则](AGENTS.md)，说明影响的游戏、复现步骤及验证范围，不提交本机游戏文件、账号环境或日志。
 
+- [参与贡献](CONTRIBUTING.md)：问题、讨论和 Pull Request 的提交方式。
+- [安全策略](SECURITY.md)：安全问题的私密报告渠道。
+
 - [当前工作上下文](docs/CURRENT_WORKING_CONTEXT.md)：最近实现和验证记录。
 - [首次发行验收](docs/FIRST_RELEASE_GAPS.md)：发行前缺口与证据。
 - [架构说明](docs/ARCHITECTURE.md)：模块与技术方向。

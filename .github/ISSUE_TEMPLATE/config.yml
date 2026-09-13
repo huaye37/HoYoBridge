@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用与兼容讨论
+    url: https://github.com/huaye37/HoYoBridge/discussions
+    about: 使用问题、兼容性交流和不需要立即修复的问题请在讨论区发帖。
+  - name: 测试版下载与已知限制
+    url: https://github.com/huaye37/HoYoBridge/releases/latest
+    about: 请先查看当前测试版的说明、系统要求和已知限制。

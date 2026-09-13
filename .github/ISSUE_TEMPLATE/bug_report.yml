@@ -1,0 +1,70 @@
+name: 问题报告
+description: 提交可复现的下载、启动、画面、性能或兼容问题。
+title: "[问题] "
+labels: ["bug", "需要复现"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请勿提交密码、验证码、账号、登录令牌、完整日志目录或游戏存档。
+        本项目目前仅支持国服官服；国际服和渠道服问题不在当前支持范围。
+  - type: dropdown
+    id: game
+    attributes:
+      label: 游戏
+      options:
+        - 原神（国服官服）
+        - 崩坏：星穹铁道（国服官服）
+        - 绝区零（国服官服）
+        - 崩坏 3（国服官服）
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 问题发生阶段
+      options:
+        - 安装包打开
+        - 游戏下载或更新
+        - 校验或修复
+        - 环境准备
+        - 启动游戏
+        - 登录后或游戏内
+        - 窗口、分辨率或手柄
+        - 性能
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      description: 请填写星桥版本、macOS 版本、芯片型号、内存和是否为测试版系统。
+      placeholder: "星桥 v0.1.0；macOS 26.x；Apple Silicon；32 GB；非测试版"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: "1. 打开星桥\n2. 选择……\n3. 点击……\n4. 出现……"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 错误文字、截图或脱敏日志
+      description: 截图可直接拖入。日志只粘贴与报错相关、已脱敏的片段。
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我确认未包含账号、密码、验证码、令牌或其他敏感数据。
+          required: true
