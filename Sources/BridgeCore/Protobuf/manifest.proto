@@ -1,0 +1,33 @@
+/*
+  Vendored from yaagl/yet-another-anime-game-launcher at
+  ca78abc29c2fc236261d088c6907d28cab6e9476 under that repository's MIT license.
+  See LICENSES/YAAGL-MIT.txt. Original provenance comment retained below.
+  ChunkInfo field 7 is a local MacGameBridge extension based only on the
+  redacted CN wire observation documented in docs/MANIFEST_ADAPTER.md.
+*/
+/*
+	Information kindly provided by EternalStudentDesuKa
+*/
+
+syntax = "proto3";
+
+message Manifest {
+	repeated FileInfo files = 1;
+}
+
+message FileInfo {
+	string filename = 1; // Path to the file relative to the game directory
+	repeated ChunkInfo chunks = 2;
+	int32 flags = 3;     // 0 for files, 64 for directories. No other values were ever observed
+	int32 size = 4;      // Size of the entire file
+	string md5 = 5;      // MD5 checksum of the entire file
+}
+message ChunkInfo {
+	string chunk_id = 1;
+	string md5 = 2;               // MD5 checksum of the uncompressed chunk data
+	uint64 offset = 3;            // Offset at which this chunk should be put into the resulting file
+	uint32 compressed_size = 4;   // Size of the compressed chunk
+	uint32 uncompressed_size = 5; // Size of the uncompressed chunk
+	uint64 xxhash = 6;            // Xxhash checksum of the compressed chunk data
+	string opaque_hash = 7;       // Observed as 32 lowercase hex bytes; semantics unverified
+}

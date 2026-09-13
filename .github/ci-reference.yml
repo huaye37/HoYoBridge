@@ -1,0 +1,15 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+jobs:
+  swift:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version
+      - name: Build
+        run: env -u PROTOC_PATH swift build
+      - name: Test
+        run: env -u PROTOC_PATH swift test

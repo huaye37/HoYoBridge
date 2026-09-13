@@ -1,0 +1,33 @@
+{
+  "catalogVersion": "0.1.0-development",
+  "channel": "development",
+  "expiresAt": "2030-08-19T00:00:00Z",
+  "games": [
+    {
+      "displayName": "原神",
+      "id": "genshin-cn",
+      "region": "CN"
+    }
+  ],
+  "issuedAt": "2026-08-18T00:00:00Z",
+  "minimumClientVersion": "0.1.0",
+  "profiles": [],
+  "revision": 1,
+  "revocations": {
+    "profileIDs": [],
+    "runtimeIDs": []
+  },
+  "runtimes": [
+    {
+      "acquisition": "detectOnly",
+      "backend": "gptkD3DMetal",
+      "id": "apple-gptk-4-user-installed",
+      "license": "Apple Game Porting Toolkit license",
+      "redistributable": false,
+      "sourceURL": "https://developer.apple.com/games/game-porting-toolkit/",
+      "verification": "candidate",
+      "version": "4"
+    }
+  ],
+  "schemaVersion": 1
+}
