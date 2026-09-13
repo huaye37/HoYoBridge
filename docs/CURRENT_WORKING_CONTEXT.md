@@ -1,8 +1,9 @@
 # 星桥 HoYoBridge 当前工作上下文
 
-- 2026-09-13 发布完成：仓库已公开，v0.1.0 为未公证 Pre-release，含安装 ZIP 与校验附件。README 加入用户提供的截图。441 项本机测试通过，优化构建和解压验证通过；ZIP SHA256 为 `280172895a24f705ad9eb9e00e9cb27996411bed67ce68d935cdba8b14388541`，与 GitHub digest 一致。自动更新未开放；当前凭证缺 workflow scope，CI 暂存 `.github/ci-reference.yml`，未启用。下方“私有／未发布”记录为历史状态，不代表当前状态。
+- 2026-09-13 发布完成：仓库已公开，v0.1.0 为未公证普通测试发布，含安装 ZIP 与校验附件。README 加入用户提供的截图。441 项本机测试通过，优化构建和解压验证通过；ZIP SHA256 为 `280172895a24f705ad9eb9e00e9cb27996411bed67ce68d935cdba8b14388541`，与 GitHub digest 一致。自动更新未开放；当前凭证缺 workflow scope，CI 暂存 `.github/ci-reference.yml`，未启用。下方“私有／未发布”记录为历史状态，不代表当前状态。
+- 2026-09-13 GitHub 收尾：仓库描述、主页、主题、Discussions、Issue 模板、贡献指南、安全策略与漏洞报告均已配置；Dependabot 告警及自动安全修复已启用，合并后自动删除分支已启用。首页截图中“Packages”为空属正常：macOS 应用 ZIP 位于 Releases，而非 GitHub Packages。CI 仍因当前发布凭证缺少 `workflow` 写入权限而未启用。
 
-- 2026-09-13 发布含义纠正（覆盖下方旧解释）：用户通过 GitHub Releases 截图澄清，并确认允许未公证 Pre-release 测试版和自更新。已撤销 README、AGENTS、第三方声明及交接文档中“公证前禁止所有 Release”的错误限制。未公证需显著标注，不冒充稳定版；源码公开不自动获授权，现有组件／素材分发缺口及真实更新验证仍须处理。测试 feed 不依赖 latest 路径发现 Pre-release。本轮仅修正文档，没有上传或公开仓库。
+- 2026-09-13 发布含义纠正（覆盖下方旧解释）：用户通过 GitHub Releases 截图澄清，并确认允许未公证测试版和自更新。已撤销 README、AGENTS、第三方声明及交接文档中“公证前禁止所有 Release”的错误限制。未公证需显著标注，不冒充稳定版；源码公开不自动获授权，现有组件／素材分发缺口及真实更新验证仍须处理。测试 feed 不依赖 latest 路径发现测试版。本轮仅修正文档，没有上传或公开仓库。
 
 - 2026-09-13 文档与发布政策：用户明确公证前不发 Release。中文 README 已明确 Developer ID+公证前不发布含预发行在内的安装包、不开放玩家更新源；仅四款国服官服，不支持国际服／渠道服；区分源码公开与二进制发布。更新功能现状、开发构建、非官方声明、实际借鉴项目及美术权利范围已补充。THIRD_PARTY_NOTICES 改中文并补 Wine/DXMT/Steam 资产等待核对项、纠正 Jadeite 仅星铁的旧说法；新增 Sparkle/Jadeite/7-Zip 许可副本，原文不翻译。AGENTS 与发行交接、自更新文档同步规则。本次 gh 只读确认仓库 PRIVATE、Release 为空；没有发布、推送或运行游戏。
 

@@ -52,7 +52,7 @@
 
 ### 获取应用
 
-在 [GitHub Releases](https://github.com/huaye37/HoYoBridge/releases) 查看测试版本及可用附件。未公证阶段使用 **Pre-release（测试版）**，具体支持范围和已知问题以每个版本说明为准。安装包文件名如下：
+在 [GitHub Releases](https://github.com/huaye37/HoYoBridge/releases) 查看测试版本及可用附件。当前为**未公证的正式测试发布**；具体支持范围和已知问题以每个版本说明为准。安装包文件名如下：
 
 ```text
 HoYoBridge-macOS-arm64.zip
