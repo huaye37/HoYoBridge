@@ -1,7 +1,7 @@
 # 星桥 HoYoBridge 当前工作上下文
 
 - 2026-09-13 发布完成：仓库已公开，v0.1.0 为未公证 Pre-release，含安装 ZIP 与校验附件。README 加入用户提供的截图。441 项本机测试通过，优化构建和解压验证通过；ZIP SHA256 为 `280172895a24f705ad9eb9e00e9cb27996411bed67ce68d935cdba8b14388541`，与 GitHub digest 一致。自动更新未开放；当前凭证缺 workflow scope，CI 暂存 `.github/ci-reference.yml`，未启用。下方“私有／未发布”记录为历史状态，不代表当前状态。
-- 2026-09-14 DMG 交付：`--package` 同时生成包含应用程序快捷方式的 DMG、ZIP 和各自 SHA-256；`verify_release.sh --dmg` 挂载只读镜像并核验快捷方式、应用标识、架构、签名和校验值。DMG 已由 v0.1.0 已验证应用包实际生成并通过上述验证，待作为同一 Pre-release 附件上传。
+- 2026-09-14 DMG 交付：`--package` 同时生成包含应用程序快捷方式的 DMG、ZIP 和各自 SHA-256；`verify_release.sh --dmg` 挂载只读镜像并核验快捷方式、应用标识、架构、签名和校验值。DMG 已由 v0.1.0 已验证应用包实际生成并通过上述验证，已上传至同一 Pre-release：508,034,938 字节，SHA-256 `bf2281e2d9804b661df423ad169856ece0780fa1f342888703a5ff9069158e42`；线上范围下载也已成功。
 - 2026-09-13 GitHub 收尾：仓库描述、主页、主题、Discussions、Issue 模板、贡献指南、安全策略与漏洞报告均已配置；Dependabot 告警及自动安全修复已启用，合并后自动删除分支已启用。首页截图中“Packages”为空属正常：macOS 应用 ZIP 位于 Releases，而非 GitHub Packages。CI 仍因当前发布凭证缺少 `workflow` 写入权限而未启用。
 
 - 2026-09-13 发布含义纠正（覆盖下方旧解释）：用户通过 GitHub Releases 截图澄清，并确认允许未公证测试版和自更新。已撤销 README、AGENTS、第三方声明及交接文档中“公证前禁止所有 Release”的错误限制。未公证需显著标注，不冒充稳定版；源码公开不自动获授权，现有组件／素材分发缺口及真实更新验证仍须处理。测试 feed 不依赖 latest 路径发现测试版。本轮仅修正文档，没有上传或公开仓库。
