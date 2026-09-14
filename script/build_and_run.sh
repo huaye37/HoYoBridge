@@ -161,6 +161,14 @@ case "$MODE" in
   --package)
     /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$DIST_DIR/HoYoBridge-macOS-arm64.zip"
     (cd "$DIST_DIR" && /usr/bin/shasum -a 256 HoYoBridge-macOS-arm64.zip > HoYoBridge-macOS-arm64.zip.sha256)
+    DMG_STAGE="$(mktemp -d -t hoyobridge-dmg)"
+    trap 'rm -rf "$DMG_STAGE"' EXIT
+    mkdir -p "$DMG_STAGE/HoYoBridge"
+    /usr/bin/ditto "$APP_BUNDLE" "$DMG_STAGE/HoYoBridge/HoYoBridge.app"
+    ln -s /Applications "$DMG_STAGE/HoYoBridge/Applications"
+    /usr/bin/hdiutil create -quiet -volname '星桥 HoYoBridge' -srcfolder "$DMG_STAGE/HoYoBridge" \
+      -ov -format UDZO "$DIST_DIR/HoYoBridge-macOS-arm64.dmg"
+    (cd "$DIST_DIR" && /usr/bin/shasum -a 256 HoYoBridge-macOS-arm64.dmg > HoYoBridge-macOS-arm64.dmg.sha256)
     ;;
   run)
     open_app

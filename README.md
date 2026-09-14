@@ -52,20 +52,22 @@
 
 ### 获取应用
 
-在 [GitHub Releases](https://github.com/huaye37/HoYoBridge/releases) 查看测试版本及可用附件。当前为**未公证的正式测试发布**；具体支持范围和已知问题以每个版本说明为准。安装包文件名如下：
+在 [GitHub Releases](https://github.com/huaye37/HoYoBridge/releases) 查看测试版本及可用附件。当前为**未公证的 Pre-release（测试版）**；具体支持范围和已知问题以每个版本说明为准。普通玩家优先下载 DMG：双击打开后，把“星桥 HoYoBridge”拖进“应用程序”。安装包文件名如下：
 
 ```text
+HoYoBridge-macOS-arm64.dmg
+HoYoBridge-macOS-arm64.dmg.sha256
 HoYoBridge-macOS-arm64.zip
 HoYoBridge-macOS-arm64.zip.sha256
 ```
 
-取得可信发行包后，在两个文件所在目录检查下载完整性：
+DMG 和 ZIP 均提供同名 SHA-256 校验文件。以 DMG 为例，在两个文件所在目录检查下载完整性：
 
 ```bash
-shasum -a 256 -c HoYoBridge-macOS-arm64.zip.sha256
+shasum -a 256 -c HoYoBridge-macOS-arm64.dmg.sha256
 ```
 
-取得可信测试包后，解压并将 `HoYoBridge.app` 放入“应用程序”。SHA-256 不能替代发行者身份验证或 Apple 公证。当前开发包使用临时签名（ad-hoc）；未公证测试版首次打开可能被系统拦截。仅在确认来源可信且包未被修改后，按照 macOS「系统设置 → 隐私与安全性」提示手动确认打开。本项目不要求全局关闭系统安全功能；恶意软件或文件损坏提示不能一概当作普通未公证提示忽略。
+取得可信测试包后，优先打开 DMG 并将 `HoYoBridge.app` 拖入“应用程序”；ZIP 作为备用下载格式，解压后同样将应用拖入“应用程序”。SHA-256 不能替代发行者身份验证或 Apple 公证。当前开发包使用临时签名（ad-hoc）；未公证测试版首次打开可能被系统拦截。仅在确认来源可信且包未被修改后，按照 macOS「系统设置 → 隐私与安全性」提示手动确认打开。本项目不要求全局关闭系统安全功能；恶意软件或文件损坏提示不能一概当作普通未公证提示忽略。
 
 ### 安装游戏
 
@@ -147,17 +149,18 @@ env -u PROTOC_PATH swift test
 # 开发构建并打开应用
 bash script/build_and_run.sh
 
-# 本地优化构建，生成测试 ZIP 和 SHA-256（不是 GitHub Release，不上传）
+# 本地优化构建，生成测试 DMG、ZIP 及 SHA-256（不是 GitHub Release，不上传）
 MGB_BUILD_CONFIGURATION=release bash script/build_and_run.sh --package
 
-# 检查 ZIP 内应用的标识、架构、签名和下载完整性
+# 检查 DMG 或 ZIP 内应用的标识、架构、签名和下载完整性
 bash script/verify_release.sh --local
+bash script/verify_release.sh --local --dmg
 
 # 正式分发前额外检查 Gatekeeper 与公证票据
 bash script/verify_release.sh --public
 ```
 
-产物为 `dist/HoYoBridge.app` 和 `dist/HoYoBridge-macOS-arm64.zip`。`--public` 不会自动签名或公证，当前 ad-hoc 包不满足正式分发验收。
+产物为 `dist/HoYoBridge.app`、`dist/HoYoBridge-macOS-arm64.dmg` 和 `dist/HoYoBridge-macOS-arm64.zip`。`--public` 不会自动签名或公证，当前 ad-hoc 包不满足正式分发验收。
 
 命令中的 `release` 只是编译优化配置，不代表发布。当前 GitHub CI 尚未启用，本机执行构建和测试。未公证版本可作为测试版发布，但应显著标注状态、保留完整性校验及第三方声明；自动更新另需配置 HTTPS 更新源、Sparkle 签名密钥并完成实际升级验证。不得将测试版标为已经公证的稳定版。
 

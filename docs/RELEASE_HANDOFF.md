@@ -2,8 +2,8 @@
 
 ## 当前决定（2026-09-13）
 
-- 用户已澄清允许 GitHub 未公证测试发布及自更新；此前禁止所有发布的解释已撤销。显著注明未公证和验证范围，不标记为公证稳定版。
-- 仓库 `huaye37/HoYoBridge` 已公开，main 已推送；[v0.1.0](https://github.com/huaye37/HoYoBridge/releases/tag/v0.1.0) 已作为未公证的普通测试发布，包含安装 ZIP 与 SHA256 校验文件。源码采用干净初始历史，不公开本机旧调试历史。
+- 用户已澄清允许 GitHub 未公证 Pre-release 测试版及自更新；此前禁止所有发布的解释已撤销。显著注明未公证和验证范围，不标记为公证稳定版。
+- 仓库 `huaye37/HoYoBridge` 已公开，main 已推送；[v0.1.0](https://github.com/huaye37/HoYoBridge/releases/tag/v0.1.0) 为未公证 Pre-release，包含 DMG、ZIP 及各自 SHA256 校验文件。源码采用干净初始历史，不公开本机旧调试历史。
 - 本机 441 项测试通过，release 优化构建和解压签名／架构／标识／SHA256 验证通过；这不等于干净 Mac 或所有游戏端到端验收。CI 配置暂存 `.github/ci-reference.yml`，当前凭证缺工作流写入权限，尚未启用。
 - 自更新客户端已接入 Sparkle，尚无正式源和密钥，不等于端到端验收完成。
 - 仅支持四款国服官服；国际服和渠道服不在支持范围。
