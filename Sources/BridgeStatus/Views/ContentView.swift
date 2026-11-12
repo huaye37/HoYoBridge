@@ -191,7 +191,7 @@ private struct MiHoYoGameDetailView: View {
         }
         .controlSize(.large)
         HStack {
-          Text(game == .starRail ? "已实测配置 · 原生全屏适配" : "国服 · 独立兼容环境")
+          Text("国服官服")
           Spacer()
           Text("CrossOver 11 + DXMT 0.80")
         }
