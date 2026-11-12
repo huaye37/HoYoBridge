@@ -9,6 +9,8 @@ BUNDLE_ID="cn.yeutech.MacGameBridge"
 MIN_SYSTEM_VERSION="26.0"
 BUILD_CONFIGURATION="${MGB_BUILD_CONFIGURATION:-debug}"
 APP_VERSION="${MGB_APP_VERSION:-0.1.0}"
+UPDATE_FEED_URL="${MGB_UPDATE_FEED_URL:-https://raw.githubusercontent.com/huaye37/HoYoBridge/main/updates/appcast.xml}"
+SPARKLE_PUBLIC_KEY="${MGB_SPARKLE_PUBLIC_KEY:-11DmpJkJzf0x4UdHl65GWxNMwMyu702GStGKU6p18Lw=}"
 if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "MGB_APP_VERSION must be a numeric major.minor.patch version" >&2
   exit 2
@@ -151,10 +153,12 @@ PLIST
 /usr/libexec/PlistBuddy -c 'Add :SUEnableAutomaticChecks bool false' "$INFO_PLIST"
 /usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$INFO_PLIST"
 /usr/libexec/PlistBuddy -c 'Add :SUAllowsAutomaticUpdates bool false' "$INFO_PLIST"
-if [[ -n "${MGB_UPDATE_FEED_URL:-}" || -n "${MGB_SPARKLE_PUBLIC_KEY:-}" ]]; then
-  [[ "${MGB_UPDATE_FEED_URL:-}" == https://* && -n "${MGB_SPARKLE_PUBLIC_KEY:-}" ]] || { echo "Both HTTPS feed and Sparkle public key are required" >&2; exit 2; }
-  /usr/libexec/PlistBuddy -c "Add :SUFeedURL string $MGB_UPDATE_FEED_URL" "$INFO_PLIST"
-  /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $MGB_SPARKLE_PUBLIC_KEY" "$INFO_PLIST"
+if [[ "${MGB_DISABLE_UPDATES:-0}" != 1 ]]; then
+  [[ "$UPDATE_FEED_URL" == https://* && "$SPARKLE_PUBLIC_KEY" =~ ^[A-Za-z0-9+/]{43}=$ ]] || { echo "A valid HTTPS feed and Ed25519 public key are required" >&2; exit 2; }
+  /usr/libexec/PlistBuddy -c "Add :SUFeedURL string $UPDATE_FEED_URL" "$INFO_PLIST"
+  /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_KEY" "$INFO_PLIST"
+  /usr/libexec/PlistBuddy -c 'Add :SUVerifyUpdateBeforeExtraction bool true' "$INFO_PLIST"
+  /usr/libexec/PlistBuddy -c 'Add :SURequireSignedFeed bool true' "$INFO_PLIST"
 fi
 
 /usr/bin/codesign --force --deep --sign - "$APP_BUNDLE"
