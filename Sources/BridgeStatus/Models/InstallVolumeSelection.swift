@@ -20,7 +20,7 @@ struct InstallVolumeSelection: Equatable, Sendable {
   var storageAdvice: String {
     if !isWritable { return "此位置不可写，请检查磁盘权限或连接。" }
     if isNetwork {
-      return "网络盘：可尝试存放游戏，但直接运行尚未实测；断连会中断游戏。当前不支持在网络盘上安全更新或回滚，更新前需迁回本地 APFS 磁盘。"
+      return "网络磁盘的加载速度取决于网络和存储性能，连接波动可能导致加载变慢或卡顿；断连会中断游戏。此旧迁移和更新流程的更新前 APFS 克隆备份不支持网络盘。"
     }
     if !supportsCloning {
       return "此卷不支持 APFS 克隆备份；可以存放游戏，更新和回滚前需要迁到可写的 APFS 磁盘。"

@@ -434,7 +434,7 @@ final class OfficialGameInstaller: ObservableObject {
     panel.canChooseDirectories = true
     panel.canCreateDirectories = true
     panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Games")
-    guard panel.runModal() == .OK, let parent = panel.url else { return }
+    guard let parent = InstallFolderPicker.runWithStorageNotice(panel) else { return }
     target = parent.appending(path: game.defaultDirectory.lastPathComponent)
     } else { return }
     }

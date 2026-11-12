@@ -33,7 +33,18 @@ int main(void) {
         assert(options & NSApplicationPresentationAutoHideDock);
         assert(options & NSApplicationPresentationFullScreen);
         assert(options & NSApplicationPresentationAutoHideToolbar);
+        NSRect screen=NSMakeRect(0,0,1440,900);
+        MGBHoverState hover={NO,-1};
+        assert(!MGBHoverControls(&hover,screen,NSMakePoint(100,860),24,30,YES,1));
+        assert(!MGBHoverControls(&hover,screen,NSMakePoint(100,899),24,30,YES,2));
+        assert(!MGBHoverControls(&hover,screen,NSMakePoint(100,899),24,30,YES,2.34));
+        assert(MGBHoverControls(&hover,screen,NSMakePoint(100,899),24,30,YES,2.36));
+        assert(MGBHoverControls(&hover,screen,NSMakePoint(100,855),24,30,YES,2.4));
+        assert(!MGBHoverControls(&hover,screen,NSMakePoint(100,837),24,30,YES,2.5));
+        assert(!MGBHoverControls(&hover,screen,NSMakePoint(100,899),24,30,YES,3));
+        assert(!MGBHoverControls(&hover,screen,NSMakePoint(100,899),24,30,NO,4));
         puts("PASS: oversized, unchanged, moved display, small display, Retina units");
         puts("PASS: Wine delegate forwarding and fullscreen toolbar auto-hide policy");
+        puts("PASS: top-edge dwell, control interaction, exit and inactive screen");
     }
 }

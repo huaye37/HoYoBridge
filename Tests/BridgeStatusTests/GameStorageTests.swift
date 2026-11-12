@@ -5,6 +5,15 @@ import Testing
 
 @Suite("Game storage")
 struct GameStorageTests {
+  @Test("storage performance notice distinguishes network and external disks")
+  func storagePerformanceNotice() {
+    let network = StoragePerformanceNotice.message(isLocal: false, isInternal: nil)
+    let external = StoragePerformanceNotice.message(isLocal: true, isInternal: false)
+    #expect(network?.contains("网络") == true)
+    #expect(external?.contains("速度和连接稳定") == true)
+    #expect(StoragePerformanceNotice.message(isLocal: true, isInternal: true) == nil)
+    #expect(StoragePerformanceNotice.message(isLocal: nil, isInternal: nil) == nil)
+  }
   @Test(
     "cross-volume migration on a mounted APFS validation volume",
     .enabled(if: ProcessInfo.processInfo.environment["MGB_TEST_STORAGE_VOLUME"] != nil)

@@ -29,8 +29,11 @@ The green system button also exits fullscreen. In fullscreen, a nonactivating
 native NSPanel provides standard system controls below the menu bar. Its buttons
 target the game (close, exit-and-minimize, exit fullscreen), not the small panel.
 It is a child of the game window, shown only near the screen top and removed on
-fullscreen exit. A 100 ms timer runs only during fullscreen; moving away hides
-the whole panel rather than leaving a permanent white strip. This avoids Wine's
+fullscreen exit. A 100 ms timer runs only during fullscreen. The pointer must
+remain at the top three screen points for 0.35 seconds before controls appear;
+they stay available while the pointer moves onto the menu bar or controls and
+hide when it leaves that region. This avoids triggering the white strip while
+the pointer is in the game content. This avoids Wine's
 offscreen transparent AppKit toolbar, without drawing fake traffic lights or
 using private APIs. The original toolbar's automatic hiding remains enabled.
 

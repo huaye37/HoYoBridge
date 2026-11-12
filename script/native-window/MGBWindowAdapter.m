@@ -30,6 +30,23 @@ static NSRect MGBFit(NSRect frame, NSRect visible) {
     return frame;
 }
 
+typedef struct { BOOL visible; NSTimeInterval enteredAt; } MGBHoverState;
+static BOOL MGBHoverControls(MGBHoverState *state, NSRect screen, NSPoint mouse,
+                             CGFloat menuHeight, CGFloat panelHeight,
+                             BOOL active, NSTimeInterval now) {
+    CGFloat top=NSMaxY(screen);
+    BOOL inside=active && mouse.x>=NSMinX(screen) && mouse.x<=NSMaxX(screen)
+        && mouse.y<=top && mouse.y>=NSMinY(screen);
+    if (state->visible && inside && mouse.y>=top-menuHeight-panelHeight-8) return YES;
+    if (state->visible || !inside || mouse.y<top-3) {
+        state->visible=NO; state->enteredAt=-1;
+        return NO;
+    }
+    if (state->enteredAt<0) state->enteredAt=now;
+    if (now-state->enteredAt>=0.35) state->visible=YES;
+    return state->visible;
+}
+
 // Forward Wine's delegate callbacks unchanged, except the native toolbar policy.
 @interface MGBWindowDelegate : NSObject <NSWindowDelegate>
 @property (weak) id<NSWindowDelegate> original;
@@ -150,6 +167,7 @@ static void MGBObserve(NSWindow *window) {
                 }
                 [s.toolbarTimer invalidate];
                 __block BOOL controlsShown=NO;
+                __block MGBHoverState hover={NO,-1};
                 s.toolbarTimer=[NSTimer scheduledTimerWithTimeInterval:0.1 repeats:YES block:^(NSTimer *timer) {
                     NSWindow *game=weakWindow; MGBWindowState *current=weakState;
                     if (!game || !current || !current.fullscreen) { [timer invalidate]; return; }
@@ -159,9 +177,8 @@ static void MGBObserve(NSWindow *window) {
                     NSPoint mouse=NSEvent.mouseLocation;
                     CGFloat height=NSHeight(controls.frame);
                     CGFloat menuHeight=NSApp.mainMenu.menuBarHeight;
-                    BOOL reveal=game.onActiveSpace &&
-                        mouse.x>=NSMinX(screen.frame) && mouse.x<=NSMaxX(screen.frame) &&
-                        mouse.y>=NSMaxY(screen.frame)-menuHeight-height-8 && mouse.y<=NSMaxY(screen.frame);
+                    BOOL reveal=MGBHoverControls(&hover,screen.frame,mouse,menuHeight,height,
+                        game.onActiveSpace,NSProcessInfo.processInfo.systemUptime);
                     if (reveal) {
                         NSPoint origin=NSMakePoint(NSMinX(screen.frame),NSMaxY(screen.frame)-menuHeight-height);
                         [controls orderWindow:NSWindowAbove relativeTo:game.windowNumber];

@@ -294,7 +294,7 @@ private struct MiHoYoGameDetailView: View {
     panel.canChooseFiles = false
     panel.allowsMultipleSelection = false
     panel.directoryURL = game.configuredDirectory ?? game.defaultDirectory.deletingLastPathComponent()
-    guard panel.runModal() == .OK, let selected = panel.url else { return }
+    guard let selected = InstallFolderPicker.runWithStorageNotice(panel) else { return }
     guard game.executableNames.contains(where: {
       FileManager.default.isReadableFile(atPath: selected.appending(path: $0).path)
     }) else {
