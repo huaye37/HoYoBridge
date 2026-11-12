@@ -4,16 +4,16 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>HoYoBridge</title>
         <item>
-            <title>0.1.5</title>
-            <pubDate>Thu, 12 Nov 2026 21:48:04 +0800</pubDate>
-            <sparkle:version>0.1.5</sparkle:version>
-            <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+            <title>0.1.6</title>
+            <pubDate>Thu, 12 Nov 2026 23:19:51 +0800</pubDate>
+            <sparkle:version>0.1.6</sparkle:version>
+            <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/huaye37/HoYoBridge/releases/download/v0.1.5/HoYoBridge-macOS-arm64.zip" length="8072188" type="application/octet-stream" sparkle:edSignature="T+297o86jMhOTbtc2GLO286lGJbLO93/CoPKuRN018hyGRZipRomaoGqWCp3AWJeQsMNRWNF7z4x76wE4i4UAg=="></enclosure>
+            <enclosure url="https://github.com/huaye37/HoYoBridge/releases/download/v0.1.6/HoYoBridge-macOS-arm64.zip" length="8316524" type="application/octet-stream" sparkle:edSignature="lLQVVTVPDJew8Gd2k6GgKLW8+fwz9lr3jHDeUtNAYOciqYPXhKninV6ohQ6EGqdY67tGn75CAB1Gjel8Lz0vDw=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: ChLXujybLwDxhcENzeUWu2Z9HApL/SCt7pDudSwPeHpeHU1cpuNQkq48/3rfKSF3s+HFUpwCUut7UTHCtihiDA==
+edSignature: VavsTN1ICP2iOkjlwYf7cRFBSUK1sHplO/G+NNBqToSxQdwT4SaWJpy1VBk4/vcYIpAVH6etKjcWkrXRlqSvAw==
 length: 1135
 -->
