@@ -224,7 +224,7 @@ final class GameLaunchService: ObservableObject {
     }
     let handle = try FileHandle(forWritingTo: logURL)
     let launchRecord =
-      "MGB_CONFIG backend=\(backend.rawValue) graphics=\(preferences.graphicsProfile.rawValue) resolution="
+      "MGB_CONFIG backend=\(backend.rawValue) graphics=game-managed resolution="
       + "\(preferences.resolution.rawValue) window=\(preferences.windowMode.rawValue) "
       + "fps_unlock=\(preferences.fpsUnlockMode.rawValue) "
       + "wine_debug=\(preferences.detailedWineLoggingEnabled) "
@@ -247,8 +247,6 @@ final class GameLaunchService: ObservableObject {
     process.standardInput = FileHandle.nullDevice
     process.standardOutput = handle
     process.standardError = handle
-    try process.run()
-
     let helper = Process()
     helper.executableURL = paths.wine
     helper.arguments = window.arguments(for: .genshin)
@@ -256,7 +254,8 @@ final class GameLaunchService: ObservableObject {
     helper.standardInput = FileHandle.nullDevice
     helper.standardOutput = handle
     helper.standardError = handle
-    do { try helper.run() } catch { process.terminate(); throw error }
+    try helper.run()
+    do { try process.run() } catch { helper.terminate(); throw error }
     windowHelperProcess = helper
 
     gameProcess = process
@@ -400,13 +399,11 @@ final class GameLaunchService: ObservableObject {
     paths: GameRuntimePaths,
     preferences: GameLaunchPreferences
   ) -> [String] {
-    return [
+    return NativeGameWindowSupport.applyingResolution(preferences.resolution, to: [
       "C:\\windows\\system32\\steam.exe",
       paths.windowsGamePath,
       "-screen-fullscreen", "0",
-      "-screen-width", String(preferences.resolution.width),
-      "-screen-height", String(preferences.resolution.height),
-    ]
+    ])
   }
 
   private func launchEnvironment(
@@ -434,8 +431,8 @@ final class GameLaunchService: ObservableObject {
       preferences.detailedWineLoggingEnabled ? "fixme-all,err-unwind,+timestamp" : "-all"
     environment["LANG"] = "zh_CN.UTF-8"
     environment["LC_ALL"] = "zh_CN.UTF-8"
-    NativeGameWindowSupport.resolve()?.apply(to: &environment, game: .genshin,
-      fullscreen: preferences.windowMode == .fullScreen)
+    NativeGameWindowSupport.resolve()?.apply(to: &environment, game: .genshin)
+    NativeGameWindowSupport.applyDisplayMode(preferences.windowMode, to: &environment)
     if benchmark || preferences.metalHUDEnabled {
       environment["MTL_HUD_ENABLED"] = "1"
     }

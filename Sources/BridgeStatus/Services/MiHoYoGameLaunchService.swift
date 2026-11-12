@@ -159,11 +159,15 @@ final class MiHoYoGameLaunchService: ObservableObject {
     let launched = Process()
     launched.executableURL = plan.wine
     launched.currentDirectoryURL = plan.executable.deletingLastPathComponent()
-    launched.arguments = plan.arguments
     var environment = plan.environment
     let preferences = GameLaunchPreferences.load()
+    launched.arguments = NativeGameWindowSupport.applyingResolution(preferences.resolution, to: plan.arguments)
     environment["MTL_HUD_ENABLED"] = preferences.metalHUDEnabled ? "1" : "0"
-    environment["MGB_NATIVE_FULLSCREEN"] = preferences.windowMode == .fullScreen ? "1" : "0"
+    NativeGameWindowSupport.applyDisplayMode(preferences.windowMode, to: &environment)
+    NativeGameWindowSupport.applyFrameRate(preferences.fpsUnlockMode, to: &environment)
+    try handle.write(contentsOf: Data(
+      "MGB_CONFIG window=\(preferences.windowMode.rawValue) resolution=\(preferences.resolution.rawValue) fps_target=\(preferences.fpsUnlockMode.targetFPS ?? 60) graphics=game-managed\n".utf8
+    ))
     launched.environment = environment
     launched.standardInput = FileHandle.nullDevice
     launched.standardOutput = handle

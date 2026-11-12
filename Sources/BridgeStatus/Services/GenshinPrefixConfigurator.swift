@@ -144,15 +144,9 @@ enum WineUserRegistryEditor {
     }
     let gameSection = try sectionStart(containing: updatedGeneralDataLine, lines: lines)
 
-    let fullScreen = preferences.windowMode == .fullScreen ? 1 : 0
-    if preferences.graphicsProfile == .balanced {
-      setValue(
-        "UnityGraphicsQuality_h1669003810",
-        encoded: dword(2),
-        section: gameSection,
-        lines: &lines
-      )
-    }
+    // All games start in a Wine window; the native adapter enters macOS
+    // fullscreen afterwards. Unity fullscreen would bypass its window hooks.
+    let fullScreen = 0
     setValue(
       "Screenmanager Is Fullscreen mode_h3981298716",
       encoded: dword(fullScreen),
@@ -171,28 +165,6 @@ enum WineUserRegistryEditor {
       section: gameSection,
       lines: &lines
     )
-    setValue(
-      "MIHOYOSDK_CURRENT_LANGUAGE_h2559149783",
-      encoded: binary(Data("zh-cn\0".utf8).map { String(format: "%02x", $0) }.joined()),
-      section: gameSection,
-      lines: &lines
-    )
-
-    let currentText = lines.joined(separator: "\n")
-    if let generalData = try GenshinGeneralDataEditor.updatedBinaryHex(
-      userRegistryText: currentText,
-      textLanguage: preferences.textLanguage,
-      voiceLanguage: preferences.voiceLanguage,
-      graphicsProfile: preferences.graphicsProfile
-    ) {
-      setValue(
-        GenshinGeneralDataEditor.valueName,
-        encoded: binary(generalData),
-        section: gameSection,
-        lines: &lines
-      )
-    }
-
     return lines.joined(separator: "\n")
   }
 

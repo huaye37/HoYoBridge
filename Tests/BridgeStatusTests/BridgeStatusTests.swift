@@ -328,6 +328,7 @@ struct BridgeStatusTests {
       "Screenmanager Resolution Height_h2627697771"=dword:00000438
       "Screenmanager Resolution Width_h182942802"=dword:00000780
       "UnityGraphicsQuality_h1669003810"=dword:00000005
+      "MIHOYOSDK_CURRENT_LANGUAGE_h2559149783"=hex:65,6e,00
       """
 
     let updated = try WineUserRegistryEditor.updatedText(
@@ -338,21 +339,25 @@ struct BridgeStatusTests {
     #expect(updated.contains("\"LocaleName\"=\"zh-CN\""))
     #expect(updated.contains("\"iCountry\"=\"86\""))
     #expect(updated.contains("\"Screenmanager Is Fullscreen mode_h3981298716\"=dword:00000000"))
+    let fullscreenPreferences = GameLaunchPreferences(
+      graphicsBackend: .dxmt, windowMode: .fullScreen, resolution: .balanced,
+      graphicsProfile: .balanced, textLanguage: .simplifiedChinese,
+      voiceLanguage: .simplifiedChinese, hideAfterLaunch: true, fpsUnlockMode: .disabled,
+      detailedWineLoggingEnabled: false, metalHUDEnabled: false,
+      automaticDXMTFallbackEnabled: true
+    )
+    let nativeFullscreen = try WineUserRegistryEditor.updatedText(registry, preferences: fullscreenPreferences)
+    #expect(nativeFullscreen.contains("\"Screenmanager Is Fullscreen mode_h3981298716\"=dword:00000000"))
     #expect(updated.contains("\"Screenmanager Resolution Width_h182942802\"=dword:00000640"))
     #expect(updated.contains("\"Screenmanager Resolution Height_h2627697771\"=dword:00000384"))
-    #expect(updated.contains("\"UnityGraphicsQuality_h1669003810\"=dword:00000002"))
-    #expect(updated.contains("\"MIHOYOSDK_CURRENT_LANGUAGE_h2559149783\"=hex:7a,68,2d,63,6e,00"))
+    #expect(updated.contains("\"UnityGraphicsQuality_h1669003810\"=dword:00000005"))
+    #expect(updated.contains("\"GENERAL_DATA_h2389025596\"=hex:\(generalHex)"))
+    #expect(updated.contains("\"MIHOYOSDK_CURRENT_LANGUAGE_h2559149783\"=hex:65,6e,00"))
     let updatedLines = updated.components(separatedBy: "\n")
     let gameSectionName = "[Software\\\\miHoYo\\\\\\x539f\\x795e] 2"
     let gameSection = try #require(updatedLines.firstIndex(of: gameSectionName))
     let countryLine = try #require(updatedLines.firstIndex(of: "\"sCountry\"=\"China\""))
-    let sdkLanguage =
-      "\"MIHOYOSDK_CURRENT_LANGUAGE_h2559149783\"=hex:7a,68,2d,63,6e,00"
-    let sdkLanguageLine = try #require(
-      updatedLines.firstIndex(of: sdkLanguage)
-    )
     #expect(countryLine < gameSection)
-    #expect(sdkLanguageLine > gameSection)
   }
 
   @Test("performance sampler aggregates only the active runtime processes")

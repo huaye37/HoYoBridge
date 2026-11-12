@@ -16,12 +16,6 @@ struct LauncherSettingsView: View {
   private var windowModeRaw = GameWindowMode.windowed.rawValue
   @AppStorage(LauncherPreferenceKeys.resolution)
   private var resolutionRaw = GameResolution.balanced.rawValue
-  @AppStorage(LauncherPreferenceKeys.graphicsProfile)
-  private var graphicsProfileRaw = GameGraphicsProfile.balanced.rawValue
-  @AppStorage(LauncherPreferenceKeys.textLanguage)
-  private var textLanguageRaw = GameTextLanguage.simplifiedChinese.rawValue
-  @AppStorage(LauncherPreferenceKeys.voiceLanguage)
-  private var voiceLanguageRaw = GameVoiceLanguage.simplifiedChinese.rawValue
   @AppStorage(LauncherPreferenceKeys.hideAfterLaunch)
   private var hideAfterLaunch = true
   @AppStorage(LauncherPreferenceKeys.fpsUnlockMode)
@@ -65,28 +59,13 @@ struct LauncherSettingsView: View {
                 Text(mode.title).tag(mode.rawValue)
               }
             }
-            Picker("原神分辨率", selection: $resolutionRaw) {
+            Picker("游戏启动分辨率", selection: $resolutionRaw) {
               ForEach(resolutionOptions) { option in
                 Text(option.title).tag(option.resolution.rawValue)
               }
             }
-            Picker("原神图形档位", selection: $graphicsProfileRaw) {
-              ForEach(GameGraphicsProfile.allCases) { profile in
-                Text(profile.title).tag(profile.rawValue)
-              }
-            }
-          }
-          Section("原神语言（其他游戏请在游戏内设置）") {
-            Picker("界面语言", selection: $textLanguageRaw) {
-              ForEach(GameTextLanguage.allCases) { language in
-                Text(language.title).tag(language.rawValue)
-              }
-            }
-            Picker("语音语言", selection: $voiceLanguageRaw) {
-              ForEach(GameVoiceLanguage.allCases) { language in
-                Text(language.title).tag(language.rawValue)
-              }
-            }
+            Text("显示方式和启动分辨率应用于所有游戏；画质、语言及游戏内其他设置由各游戏独立管理。")
+              .font(.caption).foregroundStyle(.secondary)
           }
           Section {
             Toggle("启动后隐藏启动器", isOn: $hideAfterLaunch)
@@ -101,12 +80,12 @@ struct LauncherSettingsView: View {
         Form {
           Section {
             Toggle(
-              "原神解锁至 120 FPS",
+              "120 FPS 目标（实验）",
               isOn: Binding(
                 get: { fpsUnlockModeRaw == GameFPSUnlockMode.fps120.rawValue },
                 set: { fpsUnlockModeRaw = ($0 ? GameFPSUnlockMode.fps120 : .disabled).rawValue }
               ))
-            Text("默认关闭。120 是目标上限，不保证达到；会增加负载，并可能导致兼容问题或账号风险。游戏更新后不匹配时保持默认帧率。")
+            Text("默认关闭。对所有游戏设置 120 FPS 渲染上限；原神另尝试解锁。其他游戏仍受各自帧率限制，未必能达到 120 FPS。")
               .font(.caption).foregroundStyle(.secondary)
           }
           Section {

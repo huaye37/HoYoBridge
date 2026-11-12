@@ -143,6 +143,7 @@ private struct MiHoYoGameDetailView: View {
                 .frame(minWidth: 160, minHeight: 40)
             }
             .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
             .tint(LauncherTheme.accent)
             .disabled(launcher.state.isBusy || launcher.state == .running || officialInstaller.isOccupied)
           } else {
@@ -178,6 +179,7 @@ private struct MiHoYoGameDetailView: View {
             Image(systemName: "ellipsis").frame(width: 32, height: 32)
           }
           .menuStyle(.borderlessButton)
+          .fixedSize(horizontal: true, vertical: false)
         }
         .controlSize(.large)
         HStack {
