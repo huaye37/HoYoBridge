@@ -25,6 +25,22 @@ enum GenshinFPSUnlock {
   static let statusFileName = "mgb-fps-unlock.status"
   private static let compatibilityShimName = "gptk4-msaa-version.dll"
 
+  static func effectivePreferences(
+    _ preferences: GameLaunchPreferences,
+    prepare: () throws -> Void
+  ) -> (preferences: GameLaunchPreferences, notice: String?) {
+    guard preferences.fpsUnlockMode.targetFPS != nil else { return (preferences, nil) }
+    do {
+      try prepare()
+      return (preferences, nil)
+    } catch {
+      return (
+        preferences.usingFPSUnlockMode(.disabled),
+        "120 FPS 解锁准备失败，本次将以默认帧率启动。\(LauncherFailureDescription.describe(error))"
+      )
+    }
+  }
+
   static func prepareDXMTPrefix(
     paths: GameRuntimePaths,
     compatibilityShim suppliedCompatibilityShim: URL? = nil
@@ -43,7 +59,7 @@ enum GenshinFPSUnlock {
     }
     versionData.replaceSubrange(match, with: forwardedName)
 
-    let shim = try resolveCompatibilityShim(suppliedCompatibilityShim)
+    let shim = try Data(contentsOf: resolveCompatibilityShim(suppliedCompatibilityShim))
     let system32 = paths.prefix.appending(
       path: "drive_c/windows/system32",
       directoryHint: .isDirectory
@@ -53,7 +69,7 @@ enum GenshinFPSUnlock {
       to: system32.appending(path: "versi0n.dll"),
       options: .atomic
     )
-    try replace(shim, at: system32.appending(path: "version.dll"))
+    try shim.write(to: system32.appending(path: "version.dll"), options: .atomic)
   }
 
   static func statusURL(paths: GameRuntimePaths) -> URL {
@@ -85,11 +101,4 @@ enum GenshinFPSUnlock {
     return bundled
   }
 
-  private static func replace(_ source: URL, at destination: URL) throws {
-    let manager = FileManager.default
-    if manager.fileExists(atPath: destination.path) {
-      try manager.removeItem(at: destination)
-    }
-    try manager.copyItem(at: source, to: destination)
-  }
 }

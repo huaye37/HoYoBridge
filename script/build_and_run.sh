@@ -16,7 +16,7 @@ fi
 case "$BUILD_CONFIGURATION" in debug|release) ;; *) exit 2 ;; esac
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIST_DIR="$ROOT_DIR/dist"
+DIST_DIR="${MGB_DIST_DIR:-$ROOT_DIR/dist}"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
@@ -24,7 +24,9 @@ APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$PROCESS_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 
-pkill -x "$PROCESS_NAME" >/dev/null 2>&1 || true
+if [[ "$MODE" != "--package" ]]; then
+  pkill -x "$PROCESS_NAME" >/dev/null 2>&1 || true
+fi
 
 cd "$ROOT_DIR"
 bash "$ROOT_DIR/script/build_native_window_adapter.sh"
@@ -66,6 +68,11 @@ copy_verified_asset() {
   test "$(stat -f '%z' "$APP_RESOURCES/RuntimeAssets/$destination_name")" = "$expected_size"
   test "$(shasum -a 256 "$APP_RESOURCES/RuntimeAssets/$destination_name" | awk '{print $1}')" = "$expected_sha256"
 }
+
+copy_verified_asset \
+  "$ROOT_DIR/RuntimeAssets/GPTKCompatibility/gptk4-msaa-version.dll" \
+  "gptk4-msaa-version.dll" "13312" \
+  "a72a43f5623984a67b70a0c203e0229c97e5ed4e4657eec9c6ff56c6cc2c49f1"
 
 copy_verified_asset \
   "$ROOT_DIR/LocalRuntimes/Downloads/wine-crossover-11.0-1-osx64-signed.tar.xz" \

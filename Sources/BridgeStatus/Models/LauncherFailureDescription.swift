@@ -2,6 +2,12 @@ import Foundation
 
 enum LauncherFailureDescription {
   static func describe(_ error: Error) -> String {
+    if let fpsError = error as? GenshinFPSUnlockError {
+      return switch fpsError {
+      case .compatibilityShimMissing: "解帧组件缺失，请重新下载完整启动器。"
+      case .unsupportedVersionModule: "当前 Wine 组件与解帧功能不兼容，请关闭解帧或更新启动器。"
+      }
+    }
     if let runtime = error as? RuntimeAssetInstallerError {
       return runtime.errorDescription ?? "运行环境准备失败。"
     }

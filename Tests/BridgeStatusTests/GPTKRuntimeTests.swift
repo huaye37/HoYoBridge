@@ -173,6 +173,25 @@ struct GPTKRuntimeTests {
     #expect(GenshinFPSUnlockStatus(contents: "active:1000") == nil)
   }
 
+  @Test("FPS preparation failure falls back only for the current launch")
+  func fpsPreparationFallback() {
+    let requested = GameLaunchPreferences.recommended.usingFPSUnlockMode(.fps120)
+    let fallback = GenshinFPSUnlock.effectivePreferences(requested) {
+      throw GenshinFPSUnlockError.compatibilityShimMissing
+    }
+    #expect(fallback.preferences == requested.usingFPSUnlockMode(.disabled))
+    #expect(fallback.notice?.contains("解帧组件缺失") == true)
+    #expect(requested.fpsUnlockMode == .fps120)
+    let success = GenshinFPSUnlock.effectivePreferences(requested) {}
+    #expect(success.preferences == requested)
+    #expect(success.notice == nil)
+    let disabled = GenshinFPSUnlock.effectivePreferences(.recommended) {
+      Issue.record("Disabled FPS mode must not prepare the shim")
+    }
+    #expect(disabled.preferences == .recommended)
+    #expect(disabled.notice == nil)
+  }
+
   @Test("rejects non GPTK 4 layouts and unsafe versions")
   func rejectsInvalidPackages() throws {
     let root = try temporaryRoot()

@@ -356,4 +356,14 @@ struct GameLaunchPreferences: Equatable, Sendable {
       automaticDXMTFallbackEnabled: automaticDXMTFallbackEnabled
     )
   }
+
+  func usingFPSUnlockMode(_ mode: GameFPSUnlockMode) -> Self {
+    Self(
+      graphicsBackend: graphicsBackend, windowMode: windowMode, resolution: resolution,
+      graphicsProfile: graphicsProfile, textLanguage: textLanguage, voiceLanguage: voiceLanguage,
+      hideAfterLaunch: hideAfterLaunch, fpsUnlockMode: mode,
+      detailedWineLoggingEnabled: detailedWineLoggingEnabled, metalHUDEnabled: metalHUDEnabled,
+      automaticDXMTFallbackEnabled: automaticDXMTFallbackEnabled
+    )
+  }
 }

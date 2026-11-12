@@ -138,15 +138,17 @@ final class GameLaunchService: ObservableObject {
       guard let self else { return }
       do {
         let launchPaths = paths
-        if preferences.fpsUnlockMode.targetFPS != nil {
+        let fps = GenshinFPSUnlock.effectivePreferences(preferences) {
           try GenshinFPSUnlock.prepareDXMTPrefix(paths: launchPaths)
         }
-        try GenshinPrefixConfigurator().prepare(paths: launchPaths, preferences: preferences)
+        self.latestLaunchNotice = fps.notice
+        let effectivePreferences = fps.preferences
+        try GenshinPrefixConfigurator().prepare(paths: launchPaths, preferences: effectivePreferences)
         try Task.checkCancellation()
         try await self.startGame(
           paths: launchPaths,
-          preferences: preferences,
-          backend: preferences.graphicsBackend,
+          preferences: effectivePreferences,
+          backend: effectivePreferences.graphicsBackend,
           benchmark: benchmark
         )
       } catch is CancellationError {
@@ -155,7 +157,7 @@ final class GameLaunchService: ObservableObject {
       } catch {
         self.state = .failed(LauncherFailureDescription.describe(error))
         if benchmark {
-          self.benchmarkState = .failed("基准测试启动失败：\(String(describing: error))")
+          self.benchmarkState = .failed("基准测试启动失败：\(LauncherFailureDescription.describe(error))")
         }
       }
       self.launchTask = nil
@@ -228,6 +230,9 @@ final class GameLaunchService: ObservableObject {
       + "wine_debug=\(preferences.detailedWineLoggingEnabled) "
       + "metal_hud=\(preferences.metalHUDEnabled)\n"
     try handle.write(contentsOf: Data(launchRecord.utf8))
+    if latestLaunchNotice != nil && preferences.fpsUnlockMode.targetFPS == nil {
+      try handle.write(contentsOf: Data("MGB_FPS_UNLOCK status=preparation_failed_fallback\n".utf8))
+    }
     GenshinFPSUnlock.clearStatus(paths: paths)
 
     let process = Process()
