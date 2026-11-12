@@ -2,6 +2,7 @@ import Foundation
 
 enum LauncherFailureDescription {
   static func describe(_ error: Error) -> String {
+    if let download = error as? RuntimeAssetDownloadError { return download.localizedDescription }
     if let fpsError = error as? GenshinFPSUnlockError {
       return switch fpsError {
       case .compatibilityShimMissing: "解帧组件缺失，请重新下载完整启动器。"

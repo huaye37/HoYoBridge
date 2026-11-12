@@ -666,14 +666,19 @@ final class OfficialGameInstaller: ObservableObject {
 
   private func prepareEngine(prefix: URL) async throws -> URL {
     if (try? GameRuntimePaths.resolveRuntime()) == nil {
-      guard let assets = RuntimePreparationAssets.resolve() else { throw Failure("运行组件缺失，请重新下载完整应用包。") }
+      let assets = try await RuntimePreparationAssets.resolveOrDownload()
       try await Task.detached { try RuntimeAssetInstaller.install(assets: assets) }.value
     }
     let destination = prefix.appending(path: "drive_c/MacGameBridge/miHoYo Launcher")
     let executable = destination.appending(path: "1.18.0.380/HYP.exe")
     if FileManager.default.isReadableFile(atPath: executable.path) { return executable }
-    guard let extractor = Bundle.main.resourceURL?.appending(path: "RuntimeAssets/7zz"),
-      FileManager.default.isExecutableFile(atPath: extractor.path) else { throw Failure("下载组件缺失，请重新下载完整应用包。") }
+    let bundledExtractor = Bundle.main.resourceURL?.appending(path: "RuntimeAssets/7zz")
+    let extractor: URL
+    if let bundledExtractor, FileManager.default.isExecutableFile(atPath: bundledExtractor.path) {
+      extractor = bundledExtractor
+    } else {
+      extractor = try await RuntimeAssetDownload.shared.obtain(RuntimeDownloadCatalog.extractor)
+    }
     try FileManager.default.createDirectory(at: prefix, withIntermediateDirectories: true)
     let url = URL(string: "https://hyp-webstatic.mihoyo.com/hyp-client/miHoYoLauncher_1.18.exe")!
     let (temporary, response) = try await URLSession.shared.download(from: url)

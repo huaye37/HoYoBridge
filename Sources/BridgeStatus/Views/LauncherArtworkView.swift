@@ -23,8 +23,14 @@ struct LauncherArtworkView: View {
     case .zenlessZoneZero: "ZenlessOfficial"
     case .honkaiImpact3: "Honkai3Official"
     }
-    return Self.artworkBundle.url(forResource: official ?? game.artworkResourceName, withExtension: official == nil ? "png" : "webp")
-      .flatMap { NSImage(contentsOf: $0) }
+    if let official,
+      let url = Self.artworkBundle.url(forResource: official, withExtension: "webp"),
+      let image = NSImage(contentsOf: url) { return image }
+    for name in [game.artworkResourceName, "LauncherLandscape"] {
+      if let url = Self.artworkBundle.url(forResource: name, withExtension: "png"),
+        let image = NSImage(contentsOf: url) { return image }
+    }
+    return nil
   }
 
   var body: some View {

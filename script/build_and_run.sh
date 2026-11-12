@@ -44,11 +44,16 @@ mkdir -p "$APP_CONTENTS/Frameworks"
 cp -R "$ROOT_DIR/.build/$BUILD_CONFIGURATION/MacGameBridge_BridgeStatus.bundle" "$APP_RESOURCES/"
 ICONSET_DIR="$ROOT_DIR/.build/LauncherApp.iconset"
 mkdir -p "$ICONSET_DIR"
+ICON_SOURCE="$ROOT_DIR/Assets/AppIcon.png"
+if [[ "${MGB_THIN_DISTRIBUTION:-0}" == 1 ]]; then
+  ICON_SOURCE="$ROOT_DIR/Assets/AppIconPrevious.png"
+  rm -f "$APP_RESOURCES/MacGameBridge_BridgeStatus.bundle/Contents/Resources/"{StarRailOfficial.webp,ZenlessOfficial.webp,Honkai3Official.webp,StarRailLandscape.png,ZenlessLandscape.png,Honkai3Landscape.png}
+fi
 for icon_size in 16 32 128 256 512; do
-  /usr/bin/sips -z "$icon_size" "$icon_size" "$ROOT_DIR/Assets/AppIcon.png" \
+  /usr/bin/sips -z "$icon_size" "$icon_size" "$ICON_SOURCE" \
     --out "$ICONSET_DIR/icon_${icon_size}x${icon_size}.png" >/dev/null
   retina_size=$((icon_size * 2))
-  /usr/bin/sips -z "$retina_size" "$retina_size" "$ROOT_DIR/Assets/AppIcon.png" \
+  /usr/bin/sips -z "$retina_size" "$retina_size" "$ICON_SOURCE" \
     --out "$ICONSET_DIR/icon_${icon_size}x${icon_size}@2x.png" >/dev/null
 done
 /usr/bin/iconutil -c icns "$ICONSET_DIR" -o "$APP_RESOURCES/AppIcon.icns"
@@ -76,6 +81,7 @@ copy_verified_asset \
   "gptk4-msaa-version.dll" "13312" \
   "a72a43f5623984a67b70a0c203e0229c97e5ed4e4657eec9c6ff56c6cc2c49f1"
 
+if [[ "${MGB_THIN_DISTRIBUTION:-0}" != 1 ]]; then
 copy_verified_asset \
   "$ROOT_DIR/LocalRuntimes/Downloads/wine-crossover-11.0-1-osx64-signed.tar.xz" \
   "wine-crossover-11.0-1-osx64-signed.tar.xz" \
@@ -98,6 +104,7 @@ copy_verified_asset "$STEAM_ASSET_ROOT/lsteamclient64.dll" "lsteamclient64.dll" 
   "af50ed0d952ef98d99d4d3ff67b4836b545c9403894430fca31969f9f630637b"
 copy_verified_asset "$STEAM_ASSET_ROOT/lsteamclient32.dll" "lsteamclient32.dll" "4412824" \
   "608eece6672369db539211fd04eb95b9fb5ddd077e76aa87c28c04c25c1e2fe2"
+fi
 
 NATIVE_WINDOW_ROOT="$ROOT_DIR/LocalRuntimes/Experiments/native-window-adapter"
 cp "$NATIVE_WINDOW_ROOT/libMGBWindowAdapter.dylib" \
@@ -172,14 +179,6 @@ case "$MODE" in
   --package)
     /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$DIST_DIR/HoYoBridge-macOS-arm64.zip"
     (cd "$DIST_DIR" && /usr/bin/shasum -a 256 HoYoBridge-macOS-arm64.zip > HoYoBridge-macOS-arm64.zip.sha256)
-    DMG_STAGE="$(mktemp -d -t hoyobridge-dmg)"
-    trap 'rm -rf "$DMG_STAGE"' EXIT
-    mkdir -p "$DMG_STAGE/HoYoBridge"
-    /usr/bin/ditto "$APP_BUNDLE" "$DMG_STAGE/HoYoBridge/HoYoBridge.app"
-    ln -s /Applications "$DMG_STAGE/HoYoBridge/Applications"
-    /usr/bin/hdiutil create -quiet -volname '星桥 HoYoBridge' -srcfolder "$DMG_STAGE/HoYoBridge" \
-      -ov -format UDZO "$DIST_DIR/HoYoBridge-macOS-arm64.dmg"
-    (cd "$DIST_DIR" && /usr/bin/shasum -a 256 HoYoBridge-macOS-arm64.dmg > HoYoBridge-macOS-arm64.dmg.sha256)
     ;;
   run)
     open_app

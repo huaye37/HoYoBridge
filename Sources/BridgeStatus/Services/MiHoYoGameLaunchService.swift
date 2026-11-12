@@ -40,27 +40,27 @@ final class MiHoYoGameLaunchService: ObservableObject {
     launchTask = Task { [weak self] in
       guard let self else { return }
       do {
+        genshinRuntime.refresh()
+        if genshinRuntime.state != .ready {
+          genshinRuntime.prepare()
+          while genshinRuntime.state == .preparing || genshinRuntime.state == .checking {
+            try await Task.sleep(for: .milliseconds(200))
+          }
+        }
+        guard genshinRuntime.state == .ready else {
+          state = .failed(Self.runtimePreparationIssue(genshinRuntime.state))
+          launchTask = nil
+          return
+        }
+        try Task.checkCancellation()
         if game == .genshin {
-          genshinRuntime.refresh()
-          if genshinRuntime.state != .ready {
-            genshinRuntime.prepare()
-            while genshinRuntime.state == .preparing || genshinRuntime.state == .checking {
-              try await Task.sleep(for: .milliseconds(200))
-            }
-          }
-          guard genshinRuntime.state == .ready else {
-            state = .failed(Self.runtimePreparationIssue(genshinRuntime.state))
-            launchTask = nil
-            return
-          }
-          try Task.checkCancellation()
           genshin.launchGenshin(preferences: .load())
           launchTask = nil
           return
         }
         let plan = try MiHoYoLaunchPlan.resolve(game: game, executable: executable)
         try await Task.detached(priority: .userInitiated) {
-          try plan.prepareIfNeeded()
+          try await plan.prepareIfNeeded()
         }.value
         if game == .starRail {
           try await StarRailDispatchWindow.activate(using: plan.dispatchScript)
@@ -232,7 +232,7 @@ struct MiHoYoLaunchPlan {
   let windowHelperArguments: [String]?
   let profileName: String
 
-  func prepareIfNeeded() throws {
+  func prepareIfNeeded() async throws {
     if game == .starRail {
       guard profileName == "hkrpg-managed-native-window-r1" else { return }
       try prepareManagedStarRailPrefix()
@@ -246,10 +246,8 @@ struct MiHoYoLaunchPlan {
       diagnosticsDirectory: diagnosticsDirectory
     )
     try CustomGamePrefixPreparer.prepare(custom)
-    guard let assets = RuntimePreparationAssets.resolve() else {
-      throw MiHoYoLaunchError.runtimeAssetsMissing
-    }
-    try RuntimeAssetInstaller.installSteamStubs(assets: assets, prefix: prefix)
+    let stubs = try await SteamStubAssets.resolveOrDownload()
+    try RuntimeAssetInstaller.installSteamStubs(stubs: stubs, prefix: prefix)
   }
 
   private func prepareManagedStarRailPrefix() throws {

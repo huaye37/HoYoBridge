@@ -72,6 +72,35 @@ struct RuntimePreparationAssets: Equatable, Sendable {
     [wineArchive, dxmtArchive, steam64, steam32, lsteamclient64, lsteamclient32]
       .allSatisfy { FileManager.default.fileExists(atPath: $0.path) }
   }
+
+  static func resolveOrDownload() async throws -> Self {
+    if let existing = resolve() { return existing }
+    let fetcher = RuntimeAssetDownload.shared
+    let wine = try await fetcher.obtain(RuntimeDownloadCatalog.wine)
+    let dxmt = try await fetcher.obtain(RuntimeDownloadCatalog.dxmt)
+    let stubs = try await SteamStubAssets.resolveOrDownload()
+    return Self(wineArchive: wine, dxmtArchive: dxmt, steam64: stubs.steam64,
+      steam32: stubs.steam32, lsteamclient64: stubs.lsteamclient64, lsteamclient32: stubs.lsteamclient32)
+  }
+}
+
+struct SteamStubAssets: Sendable {
+  let steam64: URL
+  let steam32: URL
+  let lsteamclient64: URL
+  let lsteamclient32: URL
+
+  static func resolveOrDownload() async throws -> Self {
+    if let assets = RuntimePreparationAssets.resolve() {
+      return Self(steam64: assets.steam64, steam32: assets.steam32,
+        lsteamclient64: assets.lsteamclient64, lsteamclient32: assets.lsteamclient32)
+    }
+    let fetcher = RuntimeAssetDownload.shared
+    return try await Self(steam64: fetcher.obtain(RuntimeDownloadCatalog.steam64),
+      steam32: fetcher.obtain(RuntimeDownloadCatalog.steam32),
+      lsteamclient64: fetcher.obtain(RuntimeDownloadCatalog.client64),
+      lsteamclient32: fetcher.obtain(RuntimeDownloadCatalog.client32))
+  }
 }
 
 struct RuntimeAssetExpectation: Equatable, Sendable {
@@ -129,15 +158,13 @@ final class RuntimePreparationService: ObservableObject {
     guard task == nil else { return }
     if (try? GameRuntimePaths.resolveRuntime()) != nil {
       state = .ready
-    } else if RuntimePreparationAssets.resolve() != nil {
-      state = .available
     } else {
-      state = .unavailable("此构建没有包含 CrossOver、DXMT 与 Steam 兼容资产")
+      state = .available
     }
   }
 
   func prepare() {
-    guard task == nil, let assets = RuntimePreparationAssets.resolve() else {
+    guard task == nil else {
       refresh()
       return
     }
@@ -145,6 +172,7 @@ final class RuntimePreparationService: ObservableObject {
     task = Task { [weak self] in
       guard let self else { return }
       do {
+        let assets = try await RuntimePreparationAssets.resolveOrDownload()
         try await Task.detached(priority: .userInitiated) {
           try RuntimeAssetInstaller.install(assets: assets)
         }.value
@@ -280,20 +308,25 @@ enum RuntimeAssetInstaller {
     assets: RuntimePreparationAssets,
     prefix: URL
   ) throws {
+    try installSteamStubs(stubs: SteamStubAssets(steam64: assets.steam64, steam32: assets.steam32,
+      lsteamclient64: assets.lsteamclient64, lsteamclient32: assets.lsteamclient32), prefix: prefix)
+  }
+
+  static func installSteamStubs(stubs: SteamStubAssets, prefix: URL) throws {
     try replaceFile(
-      from: assets.steam64,
+      from: stubs.steam64,
       to: prefix.appending(path: "drive_c/windows/system32/steam.exe")
     )
     try replaceFile(
-      from: assets.lsteamclient64,
+      from: stubs.lsteamclient64,
       to: prefix.appending(path: "drive_c/windows/system32/lsteamclient.dll")
     )
     try replaceFile(
-      from: assets.steam32,
+      from: stubs.steam32,
       to: prefix.appending(path: "drive_c/windows/syswow64/steam.exe")
     )
     try replaceFile(
-      from: assets.lsteamclient32,
+      from: stubs.lsteamclient32,
       to: prefix.appending(path: "drive_c/windows/syswow64/lsteamclient.dll")
     )
   }
