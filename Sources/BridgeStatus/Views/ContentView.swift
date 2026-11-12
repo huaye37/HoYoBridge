@@ -65,6 +65,7 @@ private struct MiHoYoGameDetailView: View {
   @ObservedObject var launcher: MiHoYoGameLaunchService
   @State private var refreshID = UUID()
   @State private var locationError: String?
+  @State private var storagePerformanceNotice: String?
   @State private var showRepairConfirmation = false
   @State private var showAssociationConfirmation = false
   @State private var uninstallDirectory: URL?
@@ -106,6 +107,13 @@ private struct MiHoYoGameDetailView: View {
             Text(statusTitle).font(.system(size: 17, weight: .semibold))
             Text(statusSubtitle).font(.system(size: 13)).foregroundStyle(.white.opacity(0.9))
               .lineLimit(1).truncationMode(.middle)
+            if isInstalled, let storagePerformanceNotice {
+              Text(storagePerformanceNotice)
+                .font(.system(size: 12))
+                .foregroundStyle(.white.opacity(0.8))
+                .frame(maxWidth: 520, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            }
           }
           Spacer()
           if launcher.state == .running, launcher.activeGame == game {
@@ -196,6 +204,14 @@ private struct MiHoYoGameDetailView: View {
       .shadow(color: .black.opacity(0.7), radius: 8, y: 2)
     }
     .id(refreshID)
+    .task(id: game.configuredDirectory?.path ?? game.defaultDirectory.path) {
+      let directory = game.configuredDirectory ?? game.defaultDirectory
+      let notice = await Task.detached(priority: .utility) {
+        StoragePerformanceNotice.message(for: directory)
+      }.value
+      guard !Task.isCancelled else { return }
+      storagePerformanceNotice = notice
+    }
     .background {
       LauncherArtworkView(game: game)
         .overlay {
