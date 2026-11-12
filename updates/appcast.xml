@@ -1,11 +1,19 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
 IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
-  <channel>
-    <title>星桥 HoYoBridge 测试版更新</title>
-    <language>zh-CN</language>
-  </channel>
+    <channel>
+        <title>HoYoBridge</title>
+        <item>
+            <title>0.1.5</title>
+            <pubDate>Thu, 12 Nov 2026 21:48:04 +0800</pubDate>
+            <sparkle:version>0.1.5</sparkle:version>
+            <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/huaye37/HoYoBridge/releases/download/v0.1.5/HoYoBridge-macOS-arm64.zip" length="8072188" type="application/octet-stream" sparkle:edSignature="T+297o86jMhOTbtc2GLO286lGJbLO93/CoPKuRN018hyGRZipRomaoGqWCp3AWJeQsMNRWNF7z4x76wE4i4UAg=="></enclosure>
+        </item>
+    </channel>
 </rss><!-- sparkle-signatures:
-edSignature: /at4oXGisyyTn/xI5n3kBGhotE0I9CLmWPiCMMcwZcwfx5RdlgQv05gB/0Q9Ja14w3i+R2oNDSMdc842b6asBg==
-length: 494
+edSignature: ChLXujybLwDxhcENzeUWu2Z9HApL/SCt7pDudSwPeHpeHU1cpuNQkq48/3rfKSF3s+HFUpwCUut7UTHCtihiDA==
+length: 1135
 -->
