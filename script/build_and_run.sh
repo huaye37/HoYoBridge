@@ -46,7 +46,6 @@ ICONSET_DIR="$ROOT_DIR/.build/LauncherApp.iconset"
 mkdir -p "$ICONSET_DIR"
 ICON_SOURCE="$ROOT_DIR/Assets/AppIcon.png"
 if [[ "${MGB_THIN_DISTRIBUTION:-0}" == 1 ]]; then
-  ICON_SOURCE="$ROOT_DIR/Assets/AppIconPrevious.png"
   rm -f "$APP_RESOURCES/MacGameBridge_BridgeStatus.bundle/Contents/Resources/"{StarRailOfficial.webp,ZenlessOfficial.webp,Honkai3Official.webp,StarRailLandscape.png,ZenlessLandscape.png,Honkai3Landscape.png}
 fi
 for icon_size in 16 32 128 256 512; do
@@ -144,6 +143,12 @@ cat >"$INFO_PLIST" <<PLIST
   <string>$APP_NAME</string>
   <key>CFBundleDisplayName</key>
   <string>星桥 HoYoBridge</string>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>zh_CN</string>
+  <key>CFBundleLocalizations</key>
+  <array><string>zh_CN</string></array>
+  <key>CFBundleAllowMixedLocalizations</key>
+  <true/>
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>CFBundlePackageType</key>

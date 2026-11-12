@@ -52,22 +52,20 @@
 
 ### 获取应用
 
-在 [GitHub Releases](https://github.com/huaye37/HoYoBridge/releases) 查看测试版本及可用附件。当前为**未公证的 Pre-release（测试版）**；具体支持范围和已知问题以每个版本说明为准。普通玩家优先下载 DMG：双击打开后，把“星桥 HoYoBridge”拖进“应用程序”。安装包文件名如下：
+在 [GitHub Releases](https://github.com/huaye37/HoYoBridge/releases) 查看测试版本及可用附件。未公证阶段使用 **Pre-release（测试版）**，具体支持范围和已知问题以每个版本说明为准。安装包文件名如下：
 
 ```text
-HoYoBridge-macOS-arm64.dmg
-HoYoBridge-macOS-arm64.dmg.sha256
 HoYoBridge-macOS-arm64.zip
 HoYoBridge-macOS-arm64.zip.sha256
 ```
 
-DMG 和 ZIP 均提供同名 SHA-256 校验文件。以 DMG 为例，在两个文件所在目录检查下载完整性：
+取得可信发行包后，在两个文件所在目录检查下载完整性：
 
 ```bash
-shasum -a 256 -c HoYoBridge-macOS-arm64.dmg.sha256
+shasum -a 256 -c HoYoBridge-macOS-arm64.zip.sha256
 ```
 
-取得可信测试包后，优先打开 DMG 并将 `HoYoBridge.app` 拖入“应用程序”；ZIP 作为备用下载格式，解压后同样将应用拖入“应用程序”。SHA-256 不能替代发行者身份验证或 Apple 公证。当前开发包使用临时签名（ad-hoc）；未公证测试版首次打开可能被系统拦截。仅在确认来源可信且包未被修改后，按照 macOS「系统设置 → 隐私与安全性」提示手动确认打开。本项目不要求全局关闭系统安全功能；恶意软件或文件损坏提示不能一概当作普通未公证提示忽略。
+取得可信测试包后，解压并将 `HoYoBridge.app` 放入“应用程序”。SHA-256 不能替代发行者身份验证或 Apple 公证。当前开发包使用临时签名（ad-hoc）；未公证测试版首次打开可能被系统拦截。仅在确认来源可信且包未被修改后，按照 macOS「系统设置 → 隐私与安全性」提示手动确认打开。本项目不要求全局关闭系统安全功能；恶意软件或文件损坏提示不能一概当作普通未公证提示忽略。
 
 ### 安装游戏
 
@@ -111,7 +109,7 @@ shasum -a 256 -c HoYoBridge-macOS-arm64.dmg.sha256
 尚待完成的发行能力：
 
 - 四款游戏经过真实版本更新验收的统一预下载流程。
-- 启动器已接入签名测试更新源；真正下载、替换、重启的两版本升级仍未验收，GitHub 现有测试版仍需手动安装。
+- 启动器已开放签名测试更新源；真实 0.1.4 临时副本的公开包下载、验签、替换和探针重启验证通过，尚待用户在正式设置窗口自行升级验收。
 - 所有运行组件与美术素材的公开分发许可核对。
 - Developer ID 签名、公证和干净 Mac 完整安装验收。
 
@@ -149,18 +147,17 @@ env -u PROTOC_PATH swift test
 # 开发构建并打开应用
 bash script/build_and_run.sh
 
-# 本地优化构建，生成测试 DMG、ZIP 及 SHA-256（不是 GitHub Release，不上传）
+# 本地优化构建，生成测试 ZIP 和 SHA-256（不是 GitHub Release，不上传）
 MGB_BUILD_CONFIGURATION=release bash script/build_and_run.sh --package
 
-# 检查 DMG 或 ZIP 内应用的标识、架构、签名和下载完整性
+# 检查 ZIP 内应用的标识、架构、签名和下载完整性
 bash script/verify_release.sh --local
-bash script/verify_release.sh --local --dmg
 
 # 正式分发前额外检查 Gatekeeper 与公证票据
 bash script/verify_release.sh --public
 ```
 
-产物为 `dist/HoYoBridge.app`、`dist/HoYoBridge-macOS-arm64.dmg` 和 `dist/HoYoBridge-macOS-arm64.zip`。`--public` 不会自动签名或公证，当前 ad-hoc 包不满足正式分发验收。
+产物为 `dist/HoYoBridge.app` 和 `dist/HoYoBridge-macOS-arm64.zip`。`--public` 不会自动签名或公证，当前 ad-hoc 包不满足正式分发验收。
 
 命令中的 `release` 只是编译优化配置，不代表发布。当前 GitHub CI 尚未启用，本机执行构建和测试。未公证版本可作为测试版发布，但应显著标注状态、保留完整性校验及第三方声明；自动更新另需配置 HTTPS 更新源、Sparkle 签名密钥并完成实际升级验证。不得将测试版标为已经公证的稳定版。
 
@@ -171,9 +168,6 @@ bash script/verify_release.sh --public
 ## 文档与贡献
 
 提交改动前请阅读 [项目规则](AGENTS.md)，说明影响的游戏、复现步骤及验证范围，不提交本机游戏文件、账号环境或日志。
-
-- [参与贡献](CONTRIBUTING.md)：问题、讨论和 Pull Request 的提交方式。
-- [安全策略](SECURITY.md)：安全问题的私密报告渠道。
 
 - [当前工作上下文](docs/CURRENT_WORKING_CONTEXT.md)：最近实现和验证记录。
 - [首次发行验收](docs/FIRST_RELEASE_GAPS.md)：发行前缺口与证据。

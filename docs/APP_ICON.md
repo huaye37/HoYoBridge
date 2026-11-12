@@ -1,5 +1,14 @@
 # Launcher icon
 
+## 0.1.6 packaging correction (2026-11-12)
+
+The user explicitly confirmed retaining the accepted four-character icon after
+reporting the accidental fallback to the old portal icon in the 0.1.5 update
+dialog. Both normal and thin packages now use `Assets/AppIcon.png`.
+Do not replace the accepted icon as an incidental packaging change.
+Character rights remain with their respective rights holders; this is not a
+claim of official endorsement or additional licensing rights.
+
 ## Accepted recomposition
 
 User accepted the revised group placement with Paimon in front and a blue
