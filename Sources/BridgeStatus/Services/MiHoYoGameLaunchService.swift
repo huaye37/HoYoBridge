@@ -233,7 +233,7 @@ struct MiHoYoLaunchPlan {
   let profileName: String
 
   func prepareIfNeeded() async throws {
-    if game == .starRail {
+    if game.baseGame == .starRail {
       guard profileName == "hkrpg-managed-native-window-r1" else { return }
       try prepareManagedStarRailPrefix()
       return
@@ -306,7 +306,7 @@ struct MiHoYoLaunchPlan {
     {
       return plan
     }
-    if game == .starRail, let plan = try starRailManagedPlan(executable: executable) {
+    if game.baseGame == .starRail, let plan = try starRailManagedPlan(executable: executable, game: game) {
       return plan
     }
 
@@ -330,11 +330,11 @@ struct MiHoYoLaunchPlan {
     )
   }
 
-  private static func starRailManagedPlan(executable: URL) throws -> Self? {
+  private static func starRailManagedPlan(executable: URL, game: MiHoYoGame = .starRail) throws -> Self? {
     guard let assets = StarRailRuntimeAssets.resolve() else { return nil }
     let runtime = try GameRuntimePaths.resolveRuntime()
     let prefix = GameRuntimePaths.userStorageRoot.appending(
-      path: "Prefixes/starrail-cn-crossover11-dxmt-r1", directoryHint: .isDirectory)
+      path: "Prefixes/starrail-\(game.region == .china ? "cn" : "global")-crossover11-dxmt-r1", directoryHint: .isDirectory)
     var environment: [String: String] = [:]
     let inherited = ProcessInfo.processInfo.environment
     for key in ["HOME", "LOGNAME", "PATH", "TMPDIR", "USER"] {
@@ -352,7 +352,7 @@ struct MiHoYoLaunchPlan {
     environment["MGB_NATIVE_WINDOW_TITLE"] = "Honkai: Star Rail"
     environment["DYLD_INSERT_LIBRARIES"] = assets.windowAdapter.path
     return Self(
-      game: .starRail,
+      game: game,
       wine: runtime.wine,
       prefix: prefix,
       executable: executable,
@@ -362,8 +362,8 @@ struct MiHoYoLaunchPlan {
       ],
       environment: environment,
       diagnosticsDirectory: GameRuntimePaths.userStorageRoot.appending(
-        path: "Diagnostics/StarRail", directoryHint: .isDirectory),
-      dispatchScript: assets.dispatchScript,
+        path: "Diagnostics/\(game.region == .china ? "StarRail" : "StarRail-Global")", directoryHint: .isDirectory),
+      dispatchScript: game.region == .china ? assets.dispatchScript : nil,
       windowHelperArguments: [windowsPath(assets.windowFlags), "Honkai: Star Rail", "--watch"],
       profileName: "hkrpg-managed-native-window-r1"
     )

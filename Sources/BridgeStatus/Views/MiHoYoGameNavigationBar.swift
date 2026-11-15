@@ -19,7 +19,7 @@ struct MiHoYoGameNavigationBar: NSViewRepresentable {
     gameStack.spacing = 4
     gameStack.distribution = .fillEqually
 
-    for game in MiHoYoGame.allCases {
+    for game in MiHoYoGame.navigationGames {
       let button = FirstMouseNavigationButton(
         title: game.sidebarTitle,
         target: context.coordinator,
@@ -77,13 +77,13 @@ struct MiHoYoGameNavigationBar: NSViewRepresentable {
       guard let rawValue = sender.identifier?.rawValue,
         let game = MiHoYoGame(rawValue: rawValue)
       else { return }
-      selection.wrappedValue = game
-      updateSelection(game)
+      selection.wrappedValue = game.rememberedClient()
+      updateSelection(selection.wrappedValue)
     }
 
     func updateSelection(_ selectedGame: MiHoYoGame) {
       for (game, button) in buttons {
-        let selected = game == selectedGame
+        let selected = game == selectedGame.baseGame
         button.layer?.backgroundColor = selected
           ? NSColor.white.withAlphaComponent(0.13).cgColor
           : NSColor.clear.cgColor

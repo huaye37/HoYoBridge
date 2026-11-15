@@ -5,82 +5,91 @@ enum MiHoYoGame: String, CaseIterable, Identifiable, Sendable {
   case starRail
   case zenlessZoneZero
   case honkaiImpact3
+  case genshinGlobal = "genshin-global"
+  case starRailGlobal = "starRail-global"
+  case zenlessZoneZeroGlobal = "zenlessZoneZero-global"
+  case honkaiImpact3Global = "honkaiImpact3-global"
 
   var id: String { rawValue }
 
   var title: String {
     switch self {
-    case .genshin: "原神"
-    case .starRail: "崩坏：星穹铁道"
-    case .zenlessZoneZero: "绝区零"
-    case .honkaiImpact3: "崩坏 3"
+    case .genshin, .genshinGlobal: "原神"
+    case .starRail, .starRailGlobal: "崩坏：星穹铁道"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "绝区零"
+    case .honkaiImpact3, .honkaiImpact3Global: "崩坏 3"
     }
   }
 
   var shortTitle: String {
     switch self {
-    case .genshin: "原"
-    case .starRail: "星"
-    case .zenlessZoneZero: "绝"
-    case .honkaiImpact3: "崩"
+    case .genshin, .genshinGlobal: "原"
+    case .starRail, .starRailGlobal: "星"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "绝"
+    case .honkaiImpact3, .honkaiImpact3Global: "崩"
     }
   }
 
   var sidebarTitle: String {
     switch self {
-    case .genshin: "原神"
-    case .starRail: "星穹铁道"
-    case .zenlessZoneZero: "绝区零"
-    case .honkaiImpact3: "崩坏 3"
+    case .genshin, .genshinGlobal: "原神"
+    case .starRail, .starRailGlobal: "星穹铁道"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "绝区零"
+    case .honkaiImpact3, .honkaiImpact3Global: "崩坏 3"
     }
   }
 
   var artworkResourceName: String {
     switch self {
-    case .genshin: "LauncherLandscape"
-    case .starRail: "StarRailLandscape"
-    case .zenlessZoneZero: "ZenlessLandscape"
-    case .honkaiImpact3: "Honkai3Landscape"
+    case .genshin, .genshinGlobal: "LauncherLandscape"
+    case .starRail, .starRailGlobal: "StarRailLandscape"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "ZenlessLandscape"
+    case .honkaiImpact3, .honkaiImpact3Global: "Honkai3Landscape"
     }
   }
 
   var tagline: String {
     switch self {
-    case .genshin: "在 Mac 上，继续你的旅途。"
-    case .starRail: "登上星穹列车，穿越银河。"
-    case .zenlessZoneZero: "欢迎来到新艾利都。"
-    case .honkaiImpact3: "为世界上所有的美好而战。"
+    case .genshin, .genshinGlobal: "在 Mac 上，继续你的旅途。"
+    case .starRail, .starRailGlobal: "登上星穹列车，穿越银河。"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "欢迎来到新艾利都。"
+    case .honkaiImpact3, .honkaiImpact3Global: "为世界上所有的美好而战。"
     }
   }
 
   var symbol: String {
     switch self {
-    case .genshin: "wind"
-    case .starRail: "sparkles"
-    case .zenlessZoneZero: "bolt.fill"
-    case .honkaiImpact3: "flame.fill"
+    case .genshin, .genshinGlobal: "wind"
+    case .starRail, .starRailGlobal: "sparkles"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "bolt.fill"
+    case .honkaiImpact3, .honkaiImpact3Global: "flame.fill"
     }
   }
 
   var defaultDirectory: URL {
+    if region == .global {
+      return baseGame.defaultDirectory.deletingLastPathComponent()
+        .appending(path: baseGame.defaultDirectory.lastPathComponent + " Global", directoryHint: .isDirectory)
+    }
     let games = FileManager.default.homeDirectoryForCurrentUser
       .appending(path: "Games/HoYoBridge", directoryHint: .isDirectory)
     switch self {
-    case .genshin: return games.appending(path: "Genshin Impact", directoryHint: .isDirectory)
-    case .starRail: return games.appending(path: "StarRail", directoryHint: .isDirectory)
-    case .zenlessZoneZero:
+    case .genshin, .genshinGlobal: return games.appending(path: "Genshin Impact", directoryHint: .isDirectory)
+    case .starRail, .starRailGlobal: return games.appending(path: "StarRail", directoryHint: .isDirectory)
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal:
       return games.appending(path: "ZenlessZoneZero", directoryHint: .isDirectory)
-    case .honkaiImpact3:
+    case .honkaiImpact3, .honkaiImpact3Global:
       return games.appending(path: "HonkaiImpact3", directoryHint: .isDirectory)
     }
   }
 
   var executableNames: [String] {
-    switch self {
-    case .genshin: ["YuanShen.exe"]
-    case .starRail: ["StarRail.exe"]
-    case .zenlessZoneZero: ["ZenlessZoneZero.exe"]
-    case .honkaiImpact3: ["BH3.exe", "bh3.exe"]
+    if self == .genshinGlobal { return ["GenshinImpact.exe"] }
+    return switch self {
+    case .genshin, .genshinGlobal: ["YuanShen.exe"]
+    case .starRail, .starRailGlobal: ["StarRail.exe"]
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: ["ZenlessZoneZero.exe"]
+    case .honkaiImpact3, .honkaiImpact3Global: ["BH3.exe", "bh3.exe"]
     }
   }
 
@@ -104,10 +113,12 @@ enum MiHoYoGame: String, CaseIterable, Identifiable, Sendable {
     return !mountedVolumes.contains { $0.standardizedFileURL.path == volume }
   }
 
-  var configuredDirectory: URL? {
-    if self == .genshin { return GameInstallLocationPreference.load() }
+  var configuredDirectory: URL? { configuredDirectory(defaults: .standard) }
+
+  func configuredDirectory(defaults: UserDefaults) -> URL? {
+    if self == .genshin { return GameInstallLocationPreference.load(defaults: defaults) }
     guard
-      let path = UserDefaults.standard.string(forKey: "games.\(rawValue).installationRoot"),
+      let path = defaults.string(forKey: "games.\(rawValue).installationRoot"),
       path.hasPrefix("/")
     else {
       let legacy = FileManager.default.homeDirectoryForCurrentUser
@@ -120,11 +131,11 @@ enum MiHoYoGame: String, CaseIterable, Identifiable, Sendable {
     return URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
   }
 
-  func saveDirectory(_ url: URL) {
+  func saveDirectory(_ url: URL, defaults: UserDefaults = .standard) {
     if self == .genshin {
-      GameInstallLocationPreference.save(url)
+      GameInstallLocationPreference.save(url, defaults: defaults)
     } else {
-      UserDefaults.standard.set(
+      defaults.set(
         url.standardizedFileURL.path,
         forKey: "games.\(rawValue).installationRoot"
       )

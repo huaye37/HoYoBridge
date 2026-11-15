@@ -3,13 +3,20 @@ import SwiftUI
 struct ContentView: View {
   @Environment(\.scenePhase) private var scenePhase
   @ObservedObject var miHoYoLauncher: MiHoYoGameLaunchService
-  @State private var selectedGame: MiHoYoGame = .starRail
+  @ObservedObject private var chineseInstaller = OfficialGameInstaller.shared
+  @ObservedObject private var globalInstaller = OfficialGameInstaller.international
+  @State private var selectedGame: MiHoYoGame = MiHoYoGame.starRail.rememberedClient()
   @State private var prerequisiteIssue: String?
+
+  init(miHoYoLauncher: MiHoYoGameLaunchService, initialGame: MiHoYoGame? = nil) {
+    self.miHoYoLauncher = miHoYoLauncher
+    self._selectedGame = State(initialValue: initialGame ?? MiHoYoGame.starRail.rememberedClient())
+  }
 
   var body: some View {
     ZStack(alignment: .top) {
       Group {
-        MiHoYoGameDetailView(game: selectedGame, launcher: miHoYoLauncher)
+        MiHoYoGameDetailView(game: selectedGame, launcher: miHoYoLauncher, selection: $selectedGame)
       }
       .id(selectedGame)
       .transition(.opacity)
@@ -33,6 +40,7 @@ struct ContentView: View {
       .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
     }
     .animation(.easeOut(duration: 0.16), value: selectedGame)
+    .onChange(of: selectedGame) { _, value in value.rememberRegion() }
     .task {
       prerequisiteIssue = await Task.detached(priority: .utility) {
         LauncherPrerequisites.issue()
@@ -60,9 +68,16 @@ struct ContentView: View {
 }
 
 private struct MiHoYoGameDetailView: View {
-  @ObservedObject private var officialInstaller = OfficialGameInstaller.shared
+  @ObservedObject private var officialInstaller: OfficialGameInstaller
   let game: MiHoYoGame
   @ObservedObject var launcher: MiHoYoGameLaunchService
+  @Binding var selection: MiHoYoGame
+  init(game: MiHoYoGame, launcher: MiHoYoGameLaunchService, selection: Binding<MiHoYoGame>) {
+    self.game = game
+    self.launcher = launcher
+    self._selection = selection
+    self.officialInstaller = OfficialGameInstaller.service(for: game)
+  }
   @State private var refreshID = UUID()
   @State private var locationError: String?
   @State private var storagePerformanceNotice: String?
@@ -70,22 +85,48 @@ private struct MiHoYoGameDetailView: View {
   @State private var showAssociationConfirmation = false
   @State private var uninstallDirectory: URL?
   @State private var showUninstallConfirmation = false
+  @State private var showDiscardConfirmation = false
+  @State private var discardDirectory: URL?
+  @State private var diskUsage: GameDiskUsage?
+  @State private var measuringDiskUsage = false
+  @State private var diskUsageRevision = UUID()
 
   var body: some View {
     VStack(spacing: 0) {
       Spacer()
       VStack(alignment: .leading, spacing: 12) {
-        Text(game.title)
-          .font(.system(size: 38, weight: .semibold, design: .serif))
-          .foregroundStyle(.white)
+        HStack(spacing: 18) {
+          Text(game.title)
+            .font(.system(size: 38, weight: .semibold, design: .serif))
+            .foregroundStyle(.white)
+            .gesture(WindowDragGesture())
+          Picker("客户端版本", selection: Binding(
+            get: { game.region },
+            set: { selection = game.client(in: $0) }
+          )) {
+            ForEach(GameClientRegion.allCases) { region in
+              let client = game.client(in: region)
+              Text(client.regionDescription + (OfficialGameInstaller.pendingOperation(for: client) != nil
+                ? " · 下载未完成" : client.executableURL != nil ? " · 已安装" : ""))
+                .tag(region)
+            }
+          }
+          .fixedSize()
+          .labelsHidden()
+          .accessibilityLabel("客户端版本")
+          .help("国服与国际服分别管理安装、下载和更新，不切换游戏内区服")
+        }
         Text(game.tagline)
           .font(.system(size: 15))
           .foregroundStyle(.white.opacity(0.95))
+        if game.region == .global {
+          Text("国际服下载管理已接入，游戏启动兼容性尚待实测")
+            .font(.system(size: 12)).foregroundStyle(.white.opacity(0.75))
+        }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(.horizontal, 44)
       .allowsWindowActivationEvents(true)
-      .gesture(WindowDragGesture())
       .padding(.bottom, 36)
       VStack(spacing: 18) {
         if let message = officialInstaller.blockingMessage(for: game) {
@@ -107,6 +148,10 @@ private struct MiHoYoGameDetailView: View {
             Text(statusTitle).font(.system(size: 17, weight: .semibold))
             Text(statusSubtitle).font(.system(size: 13)).foregroundStyle(.white.opacity(0.9))
               .lineLimit(1).truncationMode(.middle)
+            if measuringDiskUsage || diskUsage != nil {
+              Text(diskUsageText)
+                .font(.system(size: 12)).foregroundStyle(.white.opacity(0.8))
+            }
             if isInstalled, let storagePerformanceNotice {
               Text(storagePerformanceNotice)
                 .font(.system(size: 12))
@@ -116,7 +161,9 @@ private struct MiHoYoGameDetailView: View {
             }
           }
           Spacer()
-          if launcher.state == .running, launcher.activeGame == game {
+          if officialInstaller.cleaningDownloads.contains(game) {
+            ProgressView("正在清理下载…")
+          } else if launcher.state == .running, launcher.activeGame == game {
             Button("退出游戏") { launcher.stop() }.buttonStyle(.bordered)
           } else if officialInstaller.checking.contains(game) {
             ProgressView("检查更新中…")
@@ -173,6 +220,16 @@ private struct MiHoYoGameDetailView: View {
             if officialInstaller.canEndTask(game) {
               Button("结束任务，保留文件") { officialInstaller.endTaskKeepingFiles(game) }
             }
+            if OfficialGameInstaller.pendingOperation(for: game) == .install {
+              Button("取消下载并清理文件…", role: .destructive) {
+                discardDirectory = officialInstaller.incompleteDownloadDirectory(game)
+                showDiscardConfirmation = discardDirectory != nil
+              }
+              .disabled(!officialInstaller.canDiscardDownload(game) || launcher.state.isBusy
+                || (launcher.state == .running && launcher.activeGame == game))
+            }
+            Button("重新统计占用大小") { diskUsageRevision = UUID() }
+              .disabled(installationDirectory == nil)
             Button("查看后台诊断") { officialInstaller.openDiagnostics() }
             Button("卸载游戏…", role: .destructive) {
               uninstallDirectory = game.executableURL?.deletingLastPathComponent()
@@ -191,7 +248,7 @@ private struct MiHoYoGameDetailView: View {
         }
         .controlSize(.large)
         HStack {
-          Text("国服官服")
+          Text(game.regionDescription + "官服")
           Spacer()
           Text("CrossOver 11 + DXMT 0.80")
         }
@@ -212,6 +269,18 @@ private struct MiHoYoGameDetailView: View {
       guard !Task.isCancelled else { return }
       storagePerformanceNotice = notice
     }
+    .task(id: diskUsageTaskID) {
+      diskUsage = nil
+      guard let root = installationDirectory else { measuringDiskUsage = false; return }
+      measuringDiskUsage = true
+      let scan = Task.detached(priority: .utility) { try GameDiskUsage.measure(root) }
+      let result = await withTaskCancellationHandler {
+        try? await scan.value
+      } onCancel: { scan.cancel() }
+      guard !Task.isCancelled else { return }
+      diskUsage = result
+      measuringDiskUsage = false
+    }
     .background {
       LauncherArtworkView(game: game)
         .overlay {
@@ -222,7 +291,20 @@ private struct MiHoYoGameDetailView: View {
         .ignoresSafeArea()
     }
     .preferredColorScheme(.dark)
-    .alert("卸载\(game.title)？", isPresented: $showUninstallConfirmation) {
+    .alert("取消下载并清理\(game.clientTitle)？", isPresented: $showDiscardConfirmation) {
+      Button("保留下载", role: .cancel) {}
+      Button("取消并清理", role: .destructive) {
+        guard let target = discardDirectory else { return }
+        Task {
+          _ = await officialInstaller.discardIncompleteDownload(game, expectedDirectory: target)
+          refreshID = UUID()
+          diskUsageRevision = UUID()
+        }
+      }
+    } message: {
+      Text("将停止此客户端下载，并由官方服务永久删除未完成的下载文件，无法恢复。其他客户端和兼容环境保留。剩余文件会尽可能移到废纸篓。\n\(discardDirectory?.path ?? "")")
+    }
+    .alert("卸载\(game.clientTitle)？", isPresented: $showUninstallConfirmation) {
       Button("取消", role: .cancel) {}
       Button("卸载", role: .destructive) {
         guard canManage, let target = uninstallDirectory else { return }
@@ -234,7 +316,7 @@ private struct MiHoYoGameDetailView: View {
     } message: {
       Text("将永久删除以下位置的游戏安装内容，无法从废纸篓恢复；游戏目录内的本地文件请先备份。保留兼容环境与其他游戏。\n\(uninstallDirectory?.path ?? "")")
     }
-    .alert("校验并修复\(game.title)？", isPresented: $showRepairConfirmation) {
+    .alert("校验并修复\(game.clientTitle)？", isPresented: $showRepairConfirmation) {
       Button("取消", role: .cancel) {}
       Button("开始校验") {
         guard canManage else { return }
@@ -257,6 +339,23 @@ private struct MiHoYoGameDetailView: View {
   private var canManage: Bool {
     isInstalled && !game.installationDiskOffline && !officialInstaller.isOccupied
       && !launcher.state.isBusy && launcher.state != .running
+  }
+
+  private var installationDirectory: URL? {
+    if let path = UserDefaults.standard.string(forKey: "games.\(game.rawValue).pendingInstall") {
+      return URL(fileURLWithPath: path, isDirectory: true)
+    }
+    return game.configuredDirectory ?? (isInstalled ? game.defaultDirectory : nil)
+  }
+
+  private var diskUsageTaskID: String {
+    "\(game.rawValue):\(installationDirectory?.path ?? ""):\(officialInstaller.busy.contains(game)):\(officialInstaller.paused.contains(game)):\(diskUsageRevision)"
+  }
+
+  private var diskUsageText: String {
+    let title = OfficialGameInstaller.pendingOperation(for: game) == .install ? "已下载文件占用" : "游戏占用"
+    guard let diskUsage else { return "\(title)：统计中…" }
+    return "\(title)：\(diskUsage.approximate ? "约 " : "")\(StatusFormatting.bytes(diskUsage.bytes))"
   }
 
   private var isInstalled: Bool { game.executableURL != nil }
@@ -287,6 +386,7 @@ private struct MiHoYoGameDetailView: View {
     if launcher.activeGame == game && launcher.state == .running {
       return "启动器正在跟踪运行状态"
     }
+    if let root = installationDirectory { return root.path }
     return isInstalled
       ? game.executableURL?.deletingLastPathComponent().path ?? ""
       : "可选择本机、外置硬盘或已挂载的网络磁盘"
@@ -294,16 +394,16 @@ private struct MiHoYoGameDetailView: View {
 
   private var gameTint: Color {
     switch game {
-    case .starRail: Color(red: 0.22, green: 0.17, blue: 0.52)
-    case .zenlessZoneZero: Color(red: 0.03, green: 0.35, blue: 0.32)
-    case .honkaiImpact3: Color(red: 0.48, green: 0.18, blue: 0.38)
-    case .genshin: LauncherTheme.accent
+    case .starRail, .starRailGlobal: Color(red: 0.22, green: 0.17, blue: 0.52)
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: Color(red: 0.03, green: 0.35, blue: 0.32)
+    case .honkaiImpact3, .honkaiImpact3Global: Color(red: 0.48, green: 0.18, blue: 0.38)
+    case .genshin, .genshinGlobal: LauncherTheme.accent
     }
   }
 
   private func locateGame() {
     let panel = NSOpenPanel()
-    panel.title = "定位\(game.title)"
+    panel.title = "定位\(game.clientTitle)"
     panel.message = "选择包含 \(game.executableNames.joined(separator: " / ")) 的游戏目录。"
     panel.prompt = "使用此目录"
     panel.canChooseDirectories = true
@@ -311,6 +411,10 @@ private struct MiHoYoGameDetailView: View {
     panel.allowsMultipleSelection = false
     panel.directoryURL = game.configuredDirectory ?? game.defaultDirectory.deletingLastPathComponent()
     guard let selected = InstallFolderPicker.runWithStorageNotice(panel) else { return }
+    if let issue = GameClientDirectoryPolicy.issue(for: selected, client: game) {
+      locationError = issue
+      return
+    }
     guard game.executableNames.contains(where: {
       FileManager.default.isReadableFile(atPath: selected.appending(path: $0).path)
     }) else {

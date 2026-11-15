@@ -18,10 +18,10 @@ struct LauncherArtworkView: View {
   private var landscape: NSImage? {
     if let cached = artwork.images[game] { return cached }
     let official: String? = switch game {
-    case .genshin: nil
-    case .starRail: "StarRailOfficial"
-    case .zenlessZoneZero: "ZenlessOfficial"
-    case .honkaiImpact3: "Honkai3Official"
+    case .genshin, .genshinGlobal: nil
+    case .starRail, .starRailGlobal: "StarRailOfficial"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "ZenlessOfficial"
+    case .honkaiImpact3, .honkaiImpact3Global: "Honkai3Official"
     }
     if let official,
       let url = Self.artworkBundle.url(forResource: official, withExtension: "webp"),

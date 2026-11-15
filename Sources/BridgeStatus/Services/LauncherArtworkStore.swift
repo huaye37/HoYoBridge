@@ -30,8 +30,10 @@ final class LauncherArtworkStore: ObservableObject {
     refreshing = true
     lastAttempt = Date()
     defer { refreshing = false }
+    for region in GameClientRegion.allCases {
     do {
-      let endpoint = URL(string: "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGames?launcher_id=jGHBHlcOq1&language=zh-cn")!
+      let launcher = region == .china ? "jGHBHlcOq1" : "VYTpXlbWo8"
+      let endpoint = URL(string: "https://\(region.frontendHost)/hyp/hyp-connect/api/getGames?launcher_id=\(launcher)&language=zh-cn")!
       let (data, response) = try await session.data(from: endpoint)
       guard (response as? HTTPURLResponse)?.statusCode == 200, data.count < 2_000_000 else { return }
       let catalog = try JSONDecoder().decode(Catalog.self, from: data)
@@ -65,6 +67,7 @@ final class LauncherArtworkStore: ObservableObject {
     } catch {
       logger.notice("Artwork catalog unavailable; retaining cached images")
     }
+    }
   }
 
   static func isOfficialImageURL(_ url: URL) -> Bool {
@@ -77,6 +80,10 @@ final class LauncherArtworkStore: ObservableObject {
     case "hkrpg_cn": .starRail
     case "nap_cn": .zenlessZoneZero
     case "bh3_cn": .honkaiImpact3
+    case "hk4e_global": .genshinGlobal
+    case "hkrpg_global": .starRailGlobal
+    case "nap_global": .zenlessZoneZeroGlobal
+    case "bh3_global": .honkaiImpact3Global
     default: nil
     }
   }

@@ -13,10 +13,10 @@ struct NativeGameWindowSupport {
 
   static func titles(for game: MiHoYoGame) -> String {
     switch game {
-    case .genshin: "原神|Genshin Impact"
-    case .starRail: "Honkai: Star Rail"
-    case .zenlessZoneZero: "绝区零|ZenlessZoneZero|Zenless Zone Zero"
-    case .honkaiImpact3: "崩坏3|崩坏 3|Honkai Impact 3rd"
+    case .genshin, .genshinGlobal: "原神|Genshin Impact"
+    case .starRail, .starRailGlobal: "Honkai: Star Rail"
+    case .zenlessZoneZero, .zenlessZoneZeroGlobal: "绝区零|ZenlessZoneZero|Zenless Zone Zero"
+    case .honkaiImpact3, .honkaiImpact3Global: "崩坏3|崩坏 3|Honkai Impact 3rd"
     }
   }
 
