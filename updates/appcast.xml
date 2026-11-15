@@ -13,7 +13,7 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
             <enclosure url="https://github.com/huaye37/HoYoBridge/releases/download/v0.1.12/HoYoBridge-macOS-arm64.zip" length="8429682" type="application/octet-stream" sparkle:edSignature="8lM8p+ib+SRs5/VSjeqDEn4NMqSCRC/Kf7fncsBA+B1WSgZ3JeiUTzWZDi7ssVctfsNtraoQ+wQ36zcv5v69AA=="/>
-            <description sparkle:format="markdown"><![CDATA[# 星桥 HoYoBridge 0.1.12 测试版
+            <description sparkle:format="markdown"><![CDATA[# 星桥 HoYoBridge 0.1.12
 
 发布日期：2026 年 11 月 15 日
 
@@ -42,7 +42,7 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 
 游戏内分辨率菜单由游戏自身枚举；启动器提供全部显示器模式和自定义尺寸，不承诺能改变游戏内部的全部菜单选项。
 
-未公证 Pre-release；应用使用 ad-hoc 完整性签名，更新目录及 ZIP 使用 Sparkle Ed25519 签名。更新由用户在设置中确认。
+应用尚未完成 Apple 公证，使用 ad-hoc 完整性签名；更新目录及 ZIP 使用 Sparkle Ed25519 签名。更新由用户在设置中确认。
 
 ## 完整变更
 
@@ -54,6 +54,6 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: LrPe9C110AiG83VVhz39so3BFlUK7vRxIvKdEbdy2R/gQpALctfTZE931YuwNp7KvjWiKTFz3Z3Zrpw9XNzHCw==
-length: 3885
+edSignature: Pve+lkmJCbfVawDd/NW3G1vzr9yHRufuIYdTdAosgM1t2v/Ymt7/be6rODMJ/dtiLTjS7YCs/7Zjm1dhdROABw==
+length: 3879
 -->
