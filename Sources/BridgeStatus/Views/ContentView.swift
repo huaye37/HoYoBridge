@@ -40,7 +40,10 @@ struct ContentView: View {
       .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
     }
     .animation(.easeOut(duration: 0.16), value: selectedGame)
-    .onChange(of: selectedGame) { _, value in value.rememberRegion() }
+    .onChange(of: selectedGame) { _, value in
+      value.rememberRegion()
+      Task { await LauncherArtworkStore.shared.refreshIfNeeded(regions: [value.region]) }
+    }
     .task {
       prerequisiteIssue = await Task.detached(priority: .utility) {
         LauncherPrerequisites.issue()
