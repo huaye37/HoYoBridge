@@ -15,7 +15,7 @@
 1. 维护者确认 `generate_keys --account hoyobridge-updates -p` 返回的公钥与构建脚本内置公钥一致。保管并安全备份钥匙串中的私钥，不进仓库；不可为每次发布重新生成。
 2. 设置递增的 `MGB_APP_VERSION`，运行 `MGB_BUILD_CONFIGURATION=release bash script/build_and_run.sh --package`。默认使用上述测试 feed 和固定公钥；可用 `MGB_DISABLE_UPDATES=1` 做不含更新配置的隔离构建。可覆盖 `MGB_UPDATE_FEED_URL` 和 `MGB_SPARKLE_PUBLIC_KEY` 用于独立测试，覆盖时必须同时指向匹配的测试签名身份。这一步仍是开发签名，不代表公证发行包。
 3. 未公证测试版保留可验证的应用完整性签名，在发布说明标记 ad-hoc／未公证及验证范围；未来公证版用 Developer ID 签名嵌套组件与应用、完成公证并 staple，再重新 ZIP 和计算 SHA256。两种情况下均不要在签名 appcast 后重新改 ZIP。
-4. 将最终 ZIP 放进专门的 release 目录，执行 `bash script/prepare_appcast.sh RELEASE_DIRECTORY https://github.com/huaye37/HoYoBridge/releases/download/vVERSION/`。工具从钥匙串读取私钥，生成带 EdDSA 签名的 appcast；脚本只生成，不发布。版本目录必须替换为真实、不可变的下载地址。
+4. 先编写 `docs/releases/vVERSION.md` 中文发布日志，按实际变更分为「新增功能」「改进与修复」「升级方式」「验证情况与已知问题」，附上一版本的完整变更链接；没有内容的栏目可省略。将最终 ZIP 放进专门的 release 目录，执行 `bash script/prepare_appcast.sh RELEASE_DIRECTORY https://github.com/huaye37/HoYoBridge/releases/download/vVERSION/`。脚本从 ZIP 读取真实版本，缺少对应中文日志时拒绝生成；自动复制同名 Markdown 并嵌入签名 appcast，供更新弹窗显示。工具从钥匙串读取私钥；脚本只生成，不发布。版本目录必须替换为真实、不可变的下载地址。GitHub Release 使用 `--notes-file docs/releases/vVERSION.md` 发布同一份日志，不用自动生成的英文提交列表代替。
 5. 发布版本固定地址的 ZIP，确认附件匿名可下载并与本地哈希一致，然后将生成、验签后的 appcast 原样同步至公开仓库 `updates/appcast.xml` 并推送。不可手动改签名后的 XML；测试版 feed 固定追踪 main，不依赖 `/releases/latest`。验证客户端发现、验签、替换与重启成功后才能称自更新已验收。
 
 ## 验收边界
