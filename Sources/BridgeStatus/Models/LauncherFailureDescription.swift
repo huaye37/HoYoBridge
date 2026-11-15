@@ -41,6 +41,9 @@ enum LauncherFailureDescription {
       }
     }
     let systemError = error as NSError
+    if ["HoYoBridge.StartupHelper", "HoYoBridge.Window"].contains(systemError.domain) {
+      return systemError.localizedDescription
+    }
     if systemError.domain == NSCocoaErrorDomain {
       switch systemError.code {
       case NSFileWriteOutOfSpaceError: return "磁盘空间不足，请释放空间或更换安装位置后重试。"

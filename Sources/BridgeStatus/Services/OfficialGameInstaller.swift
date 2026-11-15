@@ -72,12 +72,7 @@ final class OfficialGameInstaller: ObservableObject {
     Task {
       defer { checking.remove(game) }
       do {
-        let monitor = downloadTasks[game]
-        monitor?.cancel()
-        resetConnection()
-        await monitor?.value
-        try await stopDownloadEngine()
-        defaults.set(true, forKey: "games.\(game.rawValue).taskDetached")
+        try await detachDownloadKeepingFiles(game)
         messages[game] = "任务已结束，文件与续传记录保留；其他游戏可继续使用。"
         diagnostics.record("task_detached_" + game.rawValue)
       } catch { messages[game] = error.localizedDescription; diagnostics.record("task_stop_failed") }
@@ -87,6 +82,43 @@ final class OfficialGameInstaller: ObservableObject {
   func incompleteDownloadDirectory(_ game: MiHoYoGame) -> URL? {
     guard game.region == region else { return nil }
     return GameClientDirectoryPolicy.cleanupTarget(client: game, defaults: defaults)
+  }
+
+  static func preparePausedDownloadsForLauncherUpdate() async throws -> Bool {
+    guard try await shared.preparePausedDownloadsForUpdate() else { return false }
+    guard try await international.preparePausedDownloadsForUpdate() else { return false }
+    return !shared.isOccupied
+  }
+
+  /// Invoked only after the user accepts installation of a launcher update.
+  func preparePausedDownloadsForUpdate() async throws -> Bool {
+    guard checking.isEmpty, cleaningDownloads.isEmpty, uninstalling.isEmpty,
+      !changingDownloadState, busy.isSubset(of: paused) else { return false }
+    let unconfirmed = Self.outstandingGames(defaults: defaults)
+      .filter { $0.region == region && !paused.contains($0) }
+    guard unconfirmed.isEmpty else { return false }
+    for game in paused.sorted(by: { $0.rawValue < $1.rawValue }) {
+      checking.insert(game)
+      defer { checking.remove(game) }
+      messages[game] = "正在保留下载进度，准备更新启动器…"
+      try await detachDownloadKeepingFiles(game)
+      messages[game] = "下载文件和续传记录已保留，启动器更新后可继续。"
+      diagnostics.record("paused_download_detached_for_launcher_update_" + game.rawValue)
+    }
+    return true
+  }
+
+  private func detachDownloadKeepingFiles(_ game: MiHoYoGame) async throws {
+    let monitor = downloadTasks[game]
+    monitor?.cancel()
+    resetConnection()
+    await monitor?.value
+    try await stopDownloadEngine()
+    defaults.set(true, forKey: "games.\(game.rawValue).taskDetached")
+    busy.remove(game)
+    paused.remove(game)
+    controllableDownloads.remove(game)
+    activeOperations.removeValue(forKey: game)
   }
 
   func canDiscardDownload(_ game: MiHoYoGame) -> Bool {
@@ -408,8 +440,24 @@ final class OfficialGameInstaller: ObservableObject {
     if let outcome = response?["result"] as? String, outcome != "success" {
       throw Failure("诊断下载未创建成功：result=\(outcome), errorCode=\(response?["errorCode"] ?? "missing")")
     }
-    _ = try await query("pauseDownload", ["gameBiz": game.officialBiz, "package": game.officialPackage])
-    try await Task.sleep(for: .seconds(2))
+    // The frontend may reload during initialization. Reattach the listener and
+    // repeat pause until an actual stopped-download event arrives.
+    var lastStatus: String?
+    for attempt in 0..<80 {
+      try await Task.sleep(for: .milliseconds(500))
+      let status = try await evaluate("(()=>{if(!window.HYPClient)return null;window.__mgbProductDownloads ??= {};if(!window.__mgbProductDownloadListener){window.__mgbProductDownloadListener=d=>{if(typeof d==='string')d=JSON.parse(d);if(d.gameBiz)window.__mgbProductDownloads[d.gameBiz]=d};window.HYPClient.addEventListener('updateDownloadStatus',window.__mgbProductDownloadListener)}return window.__mgbProductDownloads['\(game.officialBiz)']?.status ?? null})()") as? String
+      if status != lastStatus { print("DIAGNOSTIC_DOWNLOAD_STATUS \(status ?? "pending")"); lastStatus = status }
+      if status == "cancelled" {
+        busy.insert(game)
+        paused.insert(game)
+        activeOperations[game] = .install
+        return
+      }
+      if attempt % 4 == 0 {
+        _ = try await query("pauseDownload", ["gameBiz": game.officialBiz, "package": game.officialPackage])
+      }
+    }
+    throw Failure("诊断下载未确认暂停。")
   }
   #endif
 

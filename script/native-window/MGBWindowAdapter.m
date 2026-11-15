@@ -216,7 +216,10 @@ static void MGBObserve(NSWindow *window) {
         }];
         [state.observers addObject:token];
     }
-    window.styleMask |= NSWindowStyleMaskResizable;
+    window.styleMask |= NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
+        | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
+    NSButton *green=[window standardWindowButton:NSWindowZoomButton];
+    green.enabled=YES; green.target=state; green.action=@selector(toggle:);
     // A real native toolbar keeps the system window controls available in
     // fullscreen. Do not draw replacement traffic lights over the game view.
     if (!window.toolbar) {
@@ -284,7 +287,7 @@ __attribute__((constructor)) static void MGBStart(void) {
         [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:YES block:^(NSTimer *timer) {
             for (NSWindow *window in NSApp.windows) {
                 if (window.visible && !window.parentWindow && [targets containsObject:window.title]
-                    && (window.styleMask & NSWindowStyleMaskResizable)) {
+                    && (window.styleMask & NSWindowStyleMaskTitled)) {
                     MGBObserve(window);
                     [timer invalidate];
                     return;

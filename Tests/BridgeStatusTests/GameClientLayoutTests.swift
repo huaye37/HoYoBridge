@@ -5,6 +5,25 @@ import Testing
 
 @MainActor
 struct GameClientLayoutTests {
+  @Test func rendersSettingsOffscreenWhenRequested() async throws {
+    guard let path = ProcessInfo.processInfo.environment["MGB_TEST_SETTINGS_OUTPUT"] else { return }
+    let output = URL(fileURLWithPath: path, isDirectory: true)
+    try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+    for (name, content) in [("game", AnyView(LauncherSettingsView())), ("runtime", AnyView(LauncherSettingsView(initialPage: "运行环境")))] {
+      let view = NSHostingView(rootView: content.frame(width: 620, height: 560))
+      let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 560),
+        styleMask: [.borderless], backing: .buffered, defer: false)
+      window.isReleasedWhenClosed = false
+      window.contentView = view
+      try await Task.sleep(for: .milliseconds(250))
+      view.layoutSubtreeIfNeeded()
+      let bitmap = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+      view.cacheDisplay(in: view.bounds, to: bitmap)
+      try #require(bitmap.representation(using: .png, properties: [:])).write(to: output.appending(path: name + ".png"))
+      window.close()
+    }
+  }
+
   @Test func rendersRegionalSelectorOffscreenWhenRequested() async throws {
     guard let path = ProcessInfo.processInfo.environment["MGB_TEST_LAYOUT_OUTPUT"] else { return }
     let output = URL(fileURLWithPath: path, isDirectory: true)

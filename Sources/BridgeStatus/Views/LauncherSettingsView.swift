@@ -11,7 +11,13 @@ struct LauncherSettingsView: View {
   }
 
   @State private var page = Page.game
+  init(initialPage: String = "游戏") {
+    self._page = State(initialValue: Page(rawValue: initialPage) ?? .game)
+  }
   @State private var resolutionOptions: [GameResolutionOption] = []
+  @State private var customWidth = ""
+  @State private var customHeight = ""
+  @State private var resolutionError: String?
   @AppStorage(LauncherPreferenceKeys.windowMode)
   private var windowModeRaw = GameWindowMode.windowed.rawValue
   @AppStorage(LauncherPreferenceKeys.resolution)
@@ -47,7 +53,7 @@ struct LauncherSettingsView: View {
               get: { updater.automaticChecks }, set: { updater.automaticChecks = $0 }
             )).disabled(!updater.configured)
             Button("检查更新…") { updater.check() }
-            Text("发现新版后由你确认安装。游戏及下载任务运行期间暂缓更新；游戏内容仍由各游戏的更新入口维护。")
+            Text("可以随时检查更新。确认安装后，已暂停的下载会保留文件；游戏运行或下载写入时等待，退出游戏并暂停下载后继续安装。")
               .font(.caption).foregroundStyle(.secondary)
           }
         }.formStyle(.grouped)
@@ -64,7 +70,25 @@ struct LauncherSettingsView: View {
                 Text(option.title).tag(option.resolution.rawValue)
               }
             }
+            HStack {
+              Text("自定义分辨率")
+              Spacer()
+              TextField("宽", text: $customWidth).frame(width: 80)
+              Text("×")
+              TextField("高", text: $customHeight).frame(width: 80)
+              Button("应用") {
+                guard let value = GameResolution(rawValue: "\(customWidth)x\(customHeight)") else {
+                  resolutionError = "请输入有效的宽高（宽320–16384，高200–16384）。"
+                  return
+                }
+                resolutionRaw = value.rawValue
+                reloadResolutions()
+              }
+            }.textFieldStyle(.roundedBorder)
+            if let resolutionError { Text(resolutionError).font(.caption).foregroundStyle(.red) }
             Text("显示方式和启动分辨率应用于所有游戏；画质、语言及游戏内其他设置由各游戏独立管理。")
+              .font(.caption).foregroundStyle(.secondary)
+            Text("窗口可拖动边缘缩放，左上角绿钮切换 macOS 全屏。列表包含显示器模式、常用比例及自定义尺寸；游戏内部可选项由游戏自身决定。")
               .font(.caption).foregroundStyle(.secondary)
           }
           Section {
@@ -102,10 +126,25 @@ struct LauncherSettingsView: View {
     .tint(LauncherTheme.accent)
     .navigationTitle("启动设置")
     .task {
-      resolutionOptions = GameResolutionCatalog.available
+      reloadResolutions()
       if GameFPSUnlockMode(rawValue: fpsUnlockModeRaw) == nil {
         fpsUnlockModeRaw = GameFPSUnlockMode.disabled.rawValue
       }
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+      reloadResolutions()
+    }
+    .onChange(of: resolutionRaw) { _, _ in reloadResolutions() }
+  }
+
+  private func reloadResolutions() {
+    resolutionOptions = GameResolutionCatalog.available
+    guard let current = GameResolution(rawValue: resolutionRaw) else { return }
+    customWidth = String(current.width)
+    customHeight = String(current.height)
+    resolutionError = nil
+    if !resolutionOptions.contains(where: { $0.resolution == current }) {
+      resolutionOptions.insert(.init(resolution: current, isCurrentDesktop: false, isNativePixels: false, isCommon: false), at: 0)
     }
   }
 }

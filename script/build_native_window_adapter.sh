@@ -6,11 +6,16 @@ mkdir -p "$output_dir"
 xcrun clang -fobjc-arc -fmodules -Wall -Wextra -Werror -framework AppKit \
   "$project_dir/script/native-window/geometry-test.m" -o "$output_dir/geometry-test"
 "$output_dir/geometry-test"
+xcrun clang -Wall -Wextra -Werror "$project_dir/script/native-window/startup-helper-test.c" -o "$output_dir/startup-helper-test"
+"$output_dir/startup-helper-test"
 xcrun clang -dynamiclib -fobjc-arc -fmodules -Wall -Wextra -Werror \
   -arch arm64 -arch x86_64 -mmacosx-version-min=15.0 -framework AppKit \
   "$project_dir/script/native-window/MGBWindowAdapter.m" -o "$output_dir/libMGBWindowAdapter.dylib"
 codesign --force --sign - "$output_dir/libMGBWindowAdapter.dylib"
 codesign --verify --strict "$output_dir/libMGBWindowAdapter.dylib"
+xcrun clang -Wall -Wextra -Werror -arch arm64 -mmacosx-version-min=15.0 \
+  "$project_dir/script/native-window/startup-helper.c" -o "$output_dir/hoyobridge-startup-helper"
+codesign --force --sign - "$output_dir/hoyobridge-startup-helper"
 mingw_cc="$project_dir/LocalRuntimes/Tools/llvm-mingw-20260616/bin/x86_64-w64-mingw32-gcc"
 if [[ ! -x "$mingw_cc" ]]; then
   echo "Missing pinned llvm-mingw compiler: $mingw_cc" >&2

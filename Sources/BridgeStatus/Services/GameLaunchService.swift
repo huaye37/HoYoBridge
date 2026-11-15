@@ -144,6 +144,9 @@ final class GameLaunchService: ObservableObject {
         self.latestLaunchNotice = fps.notice
         let effectivePreferences = fps.preferences
         try GenshinPrefixConfigurator().prepare(paths: launchPaths, preferences: effectivePreferences)
+        try GameWindowPreferences.apply(game: .genshin, wine: launchPaths.wine,
+          environment: ["PATH": "/usr/bin:/bin", "HOME": FileManager.default.homeDirectoryForCurrentUser.path,
+            "WINEPREFIX": launchPaths.prefix.path], resolution: effectivePreferences.resolution)
         try Task.checkCancellation()
         try await self.startGame(
           paths: launchPaths,

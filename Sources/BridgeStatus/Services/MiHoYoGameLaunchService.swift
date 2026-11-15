@@ -67,7 +67,7 @@ final class MiHoYoGameLaunchService: ObservableObject {
           try await plan.prepareIfNeeded()
         }.value
         if game == .starRail {
-          try await StarRailDispatchWindow.activate(using: plan.dispatchScript)
+          try await StarRailStartupHelper.activate()
         }
         try Task.checkCancellation()
         try start(plan)
@@ -240,6 +240,7 @@ struct MiHoYoLaunchPlan {
     if game.baseGame == .starRail {
       guard profileName == "hkrpg-managed-native-window-r1" else { return }
       try prepareManagedStarRailPrefix()
+      try GameWindowPreferences.apply(game: game, wine: wine, environment: environment, resolution: GameLaunchPreferences.load().resolution)
       return
     }
     let custom = CustomGameLaunchPlan(
@@ -252,6 +253,7 @@ struct MiHoYoLaunchPlan {
     try CustomGamePrefixPreparer.prepare(custom)
     let stubs = try await SteamStubAssets.resolveOrDownload()
     try RuntimeAssetInstaller.installSteamStubs(stubs: stubs, prefix: prefix)
+    try GameWindowPreferences.apply(game: game, wine: wine, environment: environment, resolution: GameLaunchPreferences.load().resolution)
   }
 
   private func prepareManagedStarRailPrefix() throws {
@@ -473,38 +475,6 @@ struct StarRailRuntimeAssets {
   }
 }
 
-enum StarRailDispatchWindow {
-  static func activate(using script: URL?) async throws {
-    guard let script else { throw MiHoYoLaunchError.starRailProfileMissing }
-    let command = "/usr/bin/ruby \(shellQuote(script.path)) >/tmp/mgb-starrail-dispatch.log 2>&1 &"
-    let appleScript = "do shell script \(appleScriptLiteral(command)) with administrator privileges"
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-    process.arguments = ["-e", appleScript]
-    process.standardOutput = FileHandle.nullDevice
-    process.standardError = FileHandle.nullDevice
-    try process.run()
-    process.waitUntilExit()
-    guard process.terminationStatus == 0 else { throw MiHoYoLaunchError.administratorAuthorizationCancelled }
-
-    for _ in 0..<30 {
-      try Task.checkCancellation()
-      if (try? String(contentsOfFile: "/etc/hosts", encoding: .utf8))?
-        .contains("mgb-hsr-dispatch-test-20260905") == true { return }
-      try await Task.sleep(for: .milliseconds(100))
-    }
-    throw MiHoYoLaunchError.dispatchWindowUnavailable
-  }
-
-  private static func shellQuote(_ value: String) -> String {
-    "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
-  }
-
-  private static func appleScriptLiteral(_ value: String) -> String {
-    "\"" + value.replacingOccurrences(of: "\\", with: "\\\\")
-      .replacingOccurrences(of: "\"", with: "\\\"") + "\""
-  }
-}
 
 enum MiHoYoLaunchError: LocalizedError {
   case unsupportedProfile

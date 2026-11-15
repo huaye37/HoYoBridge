@@ -216,7 +216,7 @@ enum GameResolutionCatalog {
     _ height: Int,
     into resolutions: inout Set<GameResolution>
   ) {
-    guard min(width, height) >= 600, max(width, height) <= 7680 else { return }
+    guard width >= 320, height >= 200, max(width, height) <= 16_384 else { return }
     resolutions.insert(GameResolution(width: width, height: height))
   }
 
@@ -235,6 +235,26 @@ enum GameResolutionCatalog {
     GameResolution(width: 3200, height: 1800),
     GameResolution(width: 3840, height: 2160),
     GameResolution(width: 5120, height: 2880),
+    GameResolution(width: 1280, height: 800),
+    GameResolution(width: 1440, height: 900),
+    GameResolution(width: 1680, height: 1050),
+    GameResolution(width: 1920, height: 1200),
+    GameResolution(width: 2048, height: 1280),
+    GameResolution(width: 2560, height: 1600),
+    GameResolution(width: 2704, height: 1690),
+    GameResolution(width: 2704, height: 1756),
+    GameResolution(width: 2880, height: 1800),
+    GameResolution(width: 3024, height: 1890),
+    GameResolution(width: 3024, height: 1964),
+    GameResolution(width: 3200, height: 2000),
+    GameResolution(width: 3456, height: 2160),
+    GameResolution(width: 3456, height: 2234),
+    GameResolution(width: 3840, height: 2400),
+    GameResolution(width: 3440, height: 1440),
+    GameResolution(width: 5120, height: 1440),
+    GameResolution(width: 5120, height: 2160),
+    GameResolution(width: 6016, height: 3384),
+    GameResolution(width: 7680, height: 4320),
   ]
 
   private static let commonResolutionSet = Set(commonResolutions)

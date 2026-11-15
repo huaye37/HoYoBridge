@@ -16,6 +16,7 @@ final class LauncherUpdateService: NSObject, ObservableObject, SPUUpdaterDelegat
   static let shared = LauncherUpdateService()
   @Published private(set) var message = "正式更新源尚未开放；当前版本可继续使用。"
   var isBusy: () -> Bool = { false }
+  var prepareForInstallation: @MainActor () async throws -> Bool = { true }
   private var controller: SPUStandardUpdaterController?
   private var pendingInstall: (() -> Void)?
   private var waitTask: Task<Void, Never>?
@@ -45,38 +46,58 @@ final class LauncherUpdateService: NSObject, ObservableObject, SPUUpdaterDelegat
   }
 
   func check() {
+    if pendingInstall != nil && waitTask == nil { beginWaitingForInstallation(); return }
     guard let controller else { show(message); return }
-    guard !isBusy() else { show("请先结束游戏及下载、更新或修复任务，再更新启动器。"); return }
     guard controller.updater.canCheckForUpdates else { show("更新检查或安装流程正在进行，请完成当前更新窗口中的操作。"); return }
     controller.checkForUpdates(nil)
   }
 
   func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
-    if isBusy() {
-      throw NSError(domain: "HoYoBridge.Update", code: 1,
-        userInfo: [NSLocalizedDescriptionKey: "游戏或安装维护任务正在运行，启动器更新已暂缓。"])
-    }
+    // Checking and downloading an application update do not replace the running app.
+    // Quiesce game/download work only after the user confirms installation.
   }
 
   func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem,
     untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
+    postponeInstallationIfNeeded(installHandler)
+  }
+
+  func postponeInstallationIfNeeded(_ installHandler: @escaping () -> Void) -> Bool {
     guard isBusy() else { return false }
     pendingInstall = installHandler
-    message = "新版已准备好，等待游戏和安装维护任务结束后安装。"
+    message = "新版已准备好。请退出游戏并暂停下载；已暂停任务会保留文件，随后安装新版。"
+    beginWaitingForInstallation()
+    return true
+  }
+
+  private func beginWaitingForInstallation() {
     waitTask?.cancel()
     waitTask = Task { [weak self] in
       while !Task.isCancelled {
-        try? await Task.sleep(for: .seconds(2))
         guard !Task.isCancelled, let self else { return }
-        if !self.isBusy() {
-          let action = self.pendingInstall
-          self.pendingInstall = nil
-          action?()
+        do {
+          if try await self.prepareForInstallation(), !self.isBusy() {
+            guard !Task.isCancelled else { return }
+            let action = self.pendingInstall
+            self.pendingInstall = nil
+            self.waitTask = nil
+            action?()
+            return
+          }
+        } catch {
+          self.message = "新版已下载，暂未安装：\(error.localizedDescription) 文件保留；处理后可再次点击检查更新重试。"
+          self.waitTask = nil
           return
         }
+        try? await Task.sleep(for: .seconds(2))
       }
     }
-    return true
+  }
+
+  func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+    waitTask?.cancel()
+    waitTask = nil
+    pendingInstall = nil
   }
 
   private func show(_ text: String) {

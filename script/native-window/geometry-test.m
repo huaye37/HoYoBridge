@@ -33,6 +33,16 @@ int main(void) {
         assert(options & NSApplicationPresentationAutoHideDock);
         assert(options & NSApplicationPresentationFullScreen);
         assert(options & NSApplicationPresentationAutoHideToolbar);
+        NSWindow *ordinary=[[NSWindow alloc] initWithContentRect:NSMakeRect(50,50,800,600)
+            styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
+        ordinary.releasedWhenClosed=NO;
+        MGBObserve(ordinary);
+        assert(ordinary.styleMask & NSWindowStyleMaskResizable);
+        assert(ordinary.styleMask & NSWindowStyleMaskMiniaturizable);
+        assert(ordinary.collectionBehavior & NSWindowCollectionBehaviorFullScreenPrimary);
+        NSButton *green=[ordinary standardWindowButton:NSWindowZoomButton];
+        assert(green.enabled && green.target && green.action==@selector(toggle:));
+        [ordinary close];
         NSRect screen=NSMakeRect(0,0,1440,900);
         MGBHoverState hover={NO,-1};
         assert(!MGBHoverControls(&hover,screen,NSMakePoint(100,860),24,30,YES,1));

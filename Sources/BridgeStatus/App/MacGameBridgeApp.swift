@@ -17,6 +17,10 @@ struct MacGameBridgeApp: App {
           miHoYoLauncher.state.isBusy || miHoYoLauncher.state == .running
             || OfficialGameInstaller.shared.isOccupied
         }
+        LauncherUpdateService.shared.prepareForInstallation = {
+          guard !miHoYoLauncher.state.isBusy, miHoYoLauncher.state != .running else { return false }
+          return try await OfficialGameInstaller.preparePausedDownloadsForLauncherUpdate()
+        }
         LauncherUpdateService.shared.start()
       }
     }

@@ -19,9 +19,15 @@ struct InternationalEngineLiveTests {
     do {
       try await engine.startIsolatedDiagnosticDownload(.honkaiImpact3Global, directory: target)
       print("GLOBAL_PARTIAL_CREATED \(FileManager.default.fileExists(atPath: target.path))")
-      // Reproduce a task previously ended while retaining its partial files.
-      try await engine.stopIsolatedDiagnosticEngine()
-      defaults.set(true, forKey: "games.honkaiImpact3-global.taskDetached")
+      // The launcher updater must release a paused engine without clearing its files or resume state.
+      #expect(engine.paused.contains(.honkaiImpact3Global))
+      let before = try FileManager.default.contentsOfDirectory(atPath: target.path).sorted()
+      #expect(try await engine.preparePausedDownloadsForUpdate())
+      #expect(!engine.isOccupied)
+      #expect(defaults.string(forKey: "games.honkaiImpact3-global.pendingInstall") == target.path)
+      #expect(defaults.bool(forKey: "games.honkaiImpact3-global.taskDetached"))
+      #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).sorted() == before)
+      print("GLOBAL_PAUSED_UPDATE_HANDOFF files-and-resume-record-preserved")
       print("GLOBAL_ENGINE_ALREADY_STOPPED true")
       let cleaned = await engine.discardIncompleteDownload(.honkaiImpact3Global, expectedDirectory: target)
       #expect(cleaned, Comment(rawValue: engine.messages[.honkaiImpact3Global] ?? "No cleanup result"))

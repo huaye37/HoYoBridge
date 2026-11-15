@@ -110,6 +110,8 @@ cp "$NATIVE_WINDOW_ROOT/libMGBWindowAdapter.dylib" \
   "$APP_RESOURCES/RuntimeAssets/libMGBWindowAdapter.dylib"
 cp "$NATIVE_WINDOW_ROOT/window-flags.exe" \
   "$APP_RESOURCES/RuntimeAssets/window-flags.exe"
+cp "$NATIVE_WINDOW_ROOT/hoyobridge-startup-helper" \
+  "$APP_RESOURCES/RuntimeAssets/hoyobridge-startup-helper"
 /usr/bin/codesign --verify "$APP_RESOURCES/RuntimeAssets/libMGBWindowAdapter.dylib"
 
 JADEITE_ROOT="$NATIVE_WINDOW_ROOT/starrail-prefix/drive_c/mgb-jadeite"
