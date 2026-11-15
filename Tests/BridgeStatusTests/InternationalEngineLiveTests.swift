@@ -19,6 +19,10 @@ struct InternationalEngineLiveTests {
     do {
       try await engine.startIsolatedDiagnosticDownload(.honkaiImpact3Global, directory: target)
       print("GLOBAL_PARTIAL_CREATED \(FileManager.default.fileExists(atPath: target.path))")
+      // Reproduce a task previously ended while retaining its partial files.
+      try await engine.stopIsolatedDiagnosticEngine()
+      defaults.set(true, forKey: "games.honkaiImpact3-global.taskDetached")
+      print("GLOBAL_ENGINE_ALREADY_STOPPED true")
       let cleaned = await engine.discardIncompleteDownload(.honkaiImpact3Global, expectedDirectory: target)
       #expect(cleaned, Comment(rawValue: engine.messages[.honkaiImpact3Global] ?? "No cleanup result"))
       #expect(!FileManager.default.fileExists(atPath: target.path))

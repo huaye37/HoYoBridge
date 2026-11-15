@@ -197,10 +197,22 @@ final class OfficialGameInstaller: ObservableObject {
         if !process.isRunning { break }
         try await Task.sleep(for: .milliseconds(100))
       }
-      guard !process.isRunning, process.terminationStatus == 0 else {
+      guard !process.isRunning else {
         if process.isRunning { process.terminate() }
+        diagnostics.record("engine_stop_timeout")
         throw Failure("下载服务尚未确认停止，未删除文件；请稍后重试。")
       }
+      let status = process.terminationStatus
+      diagnostics.record(argument == "-k" ? "engine_stop_request" : "engine_stop_wait", code: status)
+      // Wine returns 1 for -k when this prefix has no server. Always run -w
+      // afterwards: only its successful exit confirms no server is still running.
+      guard status == 0 || (argument == "-k" && status == 1) else {
+        throw Failure("下载服务停止确认失败（\(status)），文件已保留，请重试。")
+      }
+    }
+    guard !OfficialEngineDiagnostics.portIsOccupied(enginePort) else {
+      diagnostics.record("engine_listener_remains_after_stop", code: Int32(enginePort))
+      throw Failure("下载服务端口仍被占用，未继续清理文件；请稍后重试。")
     }
     engine = nil
   }
