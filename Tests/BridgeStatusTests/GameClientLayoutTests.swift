@@ -8,9 +8,10 @@ struct GameClientLayoutTests {
   @Test func rendersRegionalSelectorOffscreenWhenRequested() async throws {
     guard let path = ProcessInfo.processInfo.environment["MGB_TEST_LAYOUT_OUTPUT"] else { return }
     let output = URL(fileURLWithPath: path, isDirectory: true)
+    let game = MiHoYoGame(rawValue: ProcessInfo.processInfo.environment["MGB_TEST_LAYOUT_GAME"] ?? "") ?? .honkaiImpact3Global
     try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
     for (name, width, height) in [("regular", 960, 640), ("compact", 720, 560)] {
-      let view = NSHostingView(rootView: ContentView(miHoYoLauncher: MiHoYoGameLaunchService(), initialGame: .honkaiImpact3Global)
+      let view = NSHostingView(rootView: ContentView(miHoYoLauncher: MiHoYoGameLaunchService(), initialGame: game)
         .frame(width: CGFloat(width), height: CGFloat(height)))
       let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
         styleMask: [.borderless], backing: .buffered, defer: false)

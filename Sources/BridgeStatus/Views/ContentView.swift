@@ -100,21 +100,7 @@ private struct MiHoYoGameDetailView: View {
             .font(.system(size: 38, weight: .semibold, design: .serif))
             .foregroundStyle(.white)
             .gesture(WindowDragGesture())
-          Picker("客户端版本", selection: Binding(
-            get: { game.region },
-            set: { selection = game.client(in: $0) }
-          )) {
-            ForEach(GameClientRegion.allCases) { region in
-              let client = game.client(in: region)
-              Text(client.regionDescription + (OfficialGameInstaller.pendingOperation(for: client) != nil
-                ? " · 下载未完成" : client.executableURL != nil ? " · 已安装" : ""))
-                .tag(region)
-            }
-          }
-          .fixedSize()
-          .labelsHidden()
-          .accessibilityLabel("客户端版本")
-          .help("国服与国际服分别管理安装、下载和更新，不切换游戏内区服")
+          GameClientSwitcher(selection: $selection)
         }
         Text(game.tagline)
           .font(.system(size: 15))
