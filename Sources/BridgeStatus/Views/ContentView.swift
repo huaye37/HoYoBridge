@@ -189,7 +189,7 @@ private struct MiHoYoGameDetailView: View {
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
             .tint(LauncherTheme.accent)
-            .disabled(launcher.state.isBusy || launcher.state == .running || officialInstaller.isOccupied)
+            .disabled(launcher.state.isBusy || launcher.state == .running || officialInstaller.blocksLaunch(for: game))
           } else {
             Button("一键安装") { officialInstaller.install(game) }
               .buttonStyle(.borderedProminent)

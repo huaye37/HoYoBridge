@@ -32,6 +32,10 @@ final class MiHoYoGameLaunchService: ObservableObject {
   func launch(_ game: MiHoYoGame) {
     guard launchTask == nil, gameProcess?.isRunning != true, state != .running else { return }
     stateGame = game
+    guard !OfficialGameInstaller.service(for: game).blocksLaunch(for: game) else {
+      state = .unavailable("当前客户端有未完成的下载或维护任务，请完成后再启动。")
+      return
+    }
     guard let executable = game.executableURL else {
       state = .unavailable("未找到\(game.title)的完整游戏目录")
       return

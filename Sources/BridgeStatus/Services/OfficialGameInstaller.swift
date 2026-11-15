@@ -228,9 +228,21 @@ final class OfficialGameInstaller: ObservableObject {
 
   var isOccupied: Bool { !busy.isEmpty || !checking.isEmpty || !taskGames.isEmpty }
 
+  /// Playing uses a separate prefix from the download engine. Only this
+  /// client's maintenance (including detached unfinished work) blocks launch.
+  func blocksLaunch(for game: MiHoYoGame) -> Bool {
+    taskGames.contains(game) || busy.contains(game) || checking.contains(game)
+      || cleaningDownloads.contains(game) || uninstalling.contains(game)
+      || defaults.string(forKey: "games.\(game.rawValue).pendingInstall") != nil
+      || defaults.string(forKey: "games.\(game.rawValue).pendingUninstall") != nil
+  }
+
   func blockingMessage(for game: MiHoYoGame) -> String? {
     let tasks = taskGames
     guard let other = MiHoYoGame.allCases.first(where: { $0 != game && tasks.contains($0) }) else { return nil }
+    if game.executableURL != nil && !blocksLaunch(for: game) {
+      return "\(other.clientTitle)有下载或维护任务，仍可启动当前游戏。"
+    }
     return "\(other.clientTitle)有进行中或待确认的任务，请先切换到该游戏处理。"
   }
 
