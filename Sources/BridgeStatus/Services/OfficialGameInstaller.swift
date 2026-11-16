@@ -45,6 +45,9 @@ final class OfficialGameInstaller: ObservableObject {
   @Published private(set) var cleaningDownloads: Set<MiHoYoGame> = []
   @Published private(set) var controllableDownloads: Set<MiHoYoGame> = []
   @Published private(set) var activeOperations: [MiHoYoGame: Operation] = [:]
+  @Published private(set) var migrationProgress: [MiHoYoGame: GameMigrationProgress] = [:]
+  @Published private(set) var retainedMigrationSources: [MiHoYoGame: URL] = [:]
+  private var migrationTasks: [MiHoYoGame: Task<Void, Never>] = [:]
   private let diagnostics = OfficialEngineDiagnostics()
 
   func openDiagnostics() { diagnostics.record("diagnostics_opened"); NSWorkspace.shared.open(diagnostics.url) }
@@ -527,6 +530,88 @@ final class OfficialGameInstaller: ObservableObject {
         messages[game] = error.localizedDescription
       }
     }
+  }
+
+  func migrationCopy(_ game: MiHoYoGame) -> URL? {
+    defaults.string(forKey: "games.\(game.rawValue).migrationCopy").map { URL(fileURLWithPath: $0, isDirectory: true) }
+  }
+
+  func migrateGame(_ game: MiHoYoGame, from source: URL, to container: URL) {
+    guard game.region == region, !isOccupied, !blocksLaunch(for: game),
+      game.configuredDirectory(defaults: defaults)?.standardizedFileURL.path == source.standardizedFileURL.path,
+      migrationCopy(game) == nil else { return }
+    busy.insert(game)
+    migrationProgress[game] = .init(completedBytes: 0, totalBytes: 0, phase: "正在准备迁移")
+    messages[game] = "正在准备迁移，原文件保留"
+    migrationTasks[game] = Task {
+      defer {
+        busy.remove(game); migrationProgress.removeValue(forKey: game)
+        migrationTasks.removeValue(forKey: game)
+      }
+      do {
+        let destination = container.appending(path: source.lastPathComponent, directoryHint: .isDirectory)
+        for directory in [source, destination] {
+          if let issue = GameClientDirectoryPolicy.issue(for: directory, client: game,
+            locations: GameClientDirectoryPolicy.locations(defaults: defaults)) { throw Failure(issue) }
+        }
+        try await connect()
+        try await requireLinkedDirectory(game, target: source, automaticallyAssociate: false)
+        let records = try await query("getLocalGameInfo", ["gameBiz": biz(game), "package": game.officialPackage]) as? [[String: Any]] ?? []
+        guard let record = records.first(where: { Self.matchesClient($0, game: game) }),
+          ["ready", "need_update"].contains(record["status"] as? String ?? "") else {
+          throw Failure("后台客户端尚未空闲，请完成下载、校验或更新后再迁移。")
+        }
+        let copier = Task.detached(priority: .utility) {
+          try await GameStorageManager.migrate(source: source, to: container, game: game) { value in
+            await MainActor.run { self.migrationProgress[game] = value }
+          }
+        }
+        let copied = try await withTaskCancellationHandler { try await copier.value } onCancel: { copier.cancel() }
+        // Keep a recovery pointer before touching the official installation record.
+        defaults.set(copied.path, forKey: "games.\(game.rawValue).migrationCopy")
+        defaults.set(source.path, forKey: "games.\(game.rawValue).migrationSource")
+        try Task.checkCancellation()
+        try await completeMigrationAssociation(game, source: source, target: copied)
+      } catch is CancellationError {
+        messages[game] = migrationCopy(game) == nil ? "迁移已取消，原文件和启动路径未改变。" : "复制已完成，尚未切换位置；可从菜单完成迁移关联。"
+      } catch {
+        messages[game] = "迁移未完成：\(error.localizedDescription) 原文件保留。" + (migrationCopy(game) == nil ? "" : " 新副本已校验，可从菜单重试迁移关联。")
+      }
+    }
+  }
+
+  func cancelMigration(_ game: MiHoYoGame) { migrationTasks[game]?.cancel() }
+
+  func retryMigrationAssociation(_ game: MiHoYoGame) {
+    guard game.region == region, !isOccupied, !blocksLaunch(for: game), let target = migrationCopy(game),
+      let path = defaults.string(forKey: "games.\(game.rawValue).migrationSource") else { return }
+    busy.insert(game)
+    migrationTasks[game] = Task {
+      defer { busy.remove(game); migrationProgress.removeValue(forKey: game); migrationTasks.removeValue(forKey: game) }
+      do { try await completeMigrationAssociation(game, source: URL(fileURLWithPath: path), target: target) }
+      catch { messages[game] = "迁移关联未完成：\(error.localizedDescription) 两份文件均已保留。" }
+    }
+  }
+
+  private func completeMigrationAssociation(_ game: MiHoYoGame, source: URL, target: URL) async throws {
+    guard game.configuredDirectory(defaults: defaults)?.standardizedFileURL.path == source.standardizedFileURL.path else {
+      throw Failure("原安装路径已经改变，未自动切换。")
+    }
+    _ = try GameStorageManager.recognize(target, game: game)
+    if let issue = GameClientDirectoryPolicy.issue(for: target, client: game,
+      locations: GameClientDirectoryPolicy.locations(defaults: defaults)) { throw Failure(issue) }
+    migrationProgress[game] = .init(completedBytes: 0, totalBytes: 0, phase: "正在切换启动和更新路径")
+    messages[game] = "文件校验完成，正在关联新位置…"
+    try await connect()
+    try await linkExistingGame(game, target: target)
+    try await requireLinkedDirectory(game, target: target, automaticallyAssociate: false)
+    // Once the official engine has accepted the new path, commit even if cancellation arrived.
+    game.saveDirectory(target, defaults: defaults)
+    retainedMigrationSources[game] = source
+    defaults.removeObject(forKey: "games.\(game.rawValue).migrationCopy")
+    defaults.removeObject(forKey: "games.\(game.rawValue).migrationSource")
+    updates.remove(game)
+    messages[game] = "迁移完成，启动和更新已切换到新位置；原副本保留，可在确认游戏正常后自行清理。"
   }
 
   enum DirectoryStatus: Equatable { case linked, unregistered, conflict, unavailable }

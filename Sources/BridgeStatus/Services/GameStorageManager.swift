@@ -16,7 +16,7 @@ enum GameStorageError: LocalizedError {
 
   var errorDescription: String? {
     switch self {
-    case .invalidGame: "请选择包含 YuanShen.exe 和 YuanShen_Data 的国服游戏目录。"
+    case .invalidGame: "请选择包含当前游戏主程序和对应 _Data 文件夹的完整客户端目录。"
     case .destinationExists: "目标已有同名目录，未覆盖任何文件。请选择其他位置，或使用“定位已有游戏”。"
     case .nestedDestination: "目标不能是原游戏目录，也不能位于原游戏目录内部。"
     case .unsupportedFile: "目录包含符号链接或特殊文件，未迁移。请先检查游戏目录。"
@@ -37,16 +37,20 @@ enum GameStorageManager {
     let modified: Date?
   }
 
-  static func recognize(_ url: URL) throws -> URL {
+  static func recognize(_ url: URL, game: MiHoYoGame = .genshin) throws -> URL {
     guard url.isFileURL else { throw GameStorageError.invalidGame }
     let root = url.standardizedFileURL
     let values = try root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
     guard values.isDirectory == true, values.isSymbolicLink != true else {
       throw GameStorageError.invalidGame
     }
-    let executable = try root.appending(path: "YuanShen.exe")
+    guard let executableName = game.executableNames.first(where: {
+      FileManager.default.fileExists(atPath: root.appending(path: $0).path)
+    }) else { throw GameStorageError.invalidGame }
+    let executable = try root.appending(path: executableName)
       .resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
-    let data = try root.appending(path: "YuanShen_Data")
+    let dataName = String(executableName.dropLast(4)) + "_Data"
+    let data = try root.appending(path: dataName)
       .resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
     guard executable.isRegularFile == true, executable.isSymbolicLink != true,
       data.isDirectory == true, data.isSymbolicLink != true
@@ -55,11 +59,11 @@ enum GameStorageManager {
   }
 
   static func migrate(
-    source: URL, to container: URL,
+    source: URL, to container: URL, game: MiHoYoGame = .genshin,
     progress: @Sendable (GameMigrationProgress) async -> Void = { _ in }
   ) async throws -> URL {
     try Task.checkCancellation()
-    let source = try recognize(source)
+    let source = try recognize(source, game: game)
     let volume = try InstallVolumeProbe.inspect(container, isDefaultPreview: false)
     guard volume.isWritable else { throw GameStorageError.readOnly }
     let container = container.resolvingSymlinksInPath().standardizedFileURL
@@ -131,7 +135,7 @@ enum GameStorageManager {
       }
     }
     guard try inventory(source) == entries else { throw GameStorageError.changedDuringCopy }
-    _ = try recognize(staging)
+    _ = try recognize(staging, game: game)
     try Task.checkCancellation()
     // Exclusive rename prevents a concurrently created destination from being overwritten.
     guard renamex_np(staging.path, destination.path, UInt32(RENAME_EXCL)) == 0 else {

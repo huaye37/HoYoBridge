@@ -86,6 +86,7 @@ private struct MiHoYoGameDetailView: View {
   @State private var storagePerformanceNotice: String?
   @State private var showRepairConfirmation = false
   @State private var showAssociationConfirmation = false
+  @State private var showMigration = false
   @State private var uninstallDirectory: URL?
   @State private var showUninstallConfirmation = false
   @State private var showDiscardConfirmation = false
@@ -150,7 +151,9 @@ private struct MiHoYoGameDetailView: View {
             }
           }
           Spacer()
-          if officialInstaller.cleaningDownloads.contains(game) {
+          if let migration = officialInstaller.migrationProgress[game] {
+            Button(migration.phase + "…") { showMigration = true }.buttonStyle(.bordered)
+          } else if officialInstaller.cleaningDownloads.contains(game) {
             ProgressView("正在清理下载…")
           } else if launcher.state == .running, launcher.activeGame == game {
             Button("退出游戏") { launcher.stop() }.buttonStyle(.bordered)
@@ -205,6 +208,8 @@ private struct MiHoYoGameDetailView: View {
               .disabled(!canManage)
             Button("关联当前目录到更新服务…") { showAssociationConfirmation = true }
               .disabled(!canManage)
+            Button("迁移游戏位置…") { showMigration = true }
+              .disabled(!canManage && officialInstaller.migrationProgress[game] == nil)
             Divider()
             if officialInstaller.canEndTask(game) {
               Button("结束任务，保留文件") { officialInstaller.endTaskKeepingFiles(game) }
@@ -280,6 +285,9 @@ private struct MiHoYoGameDetailView: View {
         .ignoresSafeArea()
     }
     .preferredColorScheme(.dark)
+    .sheet(isPresented: $showMigration) {
+      GameMigrationView(game: game, installer: officialInstaller, launcher: launcher)
+    }
     .alert("取消下载并清理\(game.clientTitle)？", isPresented: $showDiscardConfirmation) {
       Button("保留下载", role: .cancel) {}
       Button("取消并清理", role: .destructive) {

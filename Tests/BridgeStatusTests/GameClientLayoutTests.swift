@@ -5,6 +5,23 @@ import Testing
 
 @MainActor
 struct GameClientLayoutTests {
+  @Test func rendersMigrationOffscreenWhenRequested() async throws {
+    guard let path = ProcessInfo.processInfo.environment["MGB_TEST_MIGRATION_OUTPUT"] else { return }
+    let output = URL(fileURLWithPath: path)
+    try FileManager.default.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let view = NSHostingView(rootView: GameMigrationView(game: .zenlessZoneZeroGlobal,
+      installer: .international, launcher: MiHoYoGameLaunchService()).frame(width: 648, height: 440))
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 648, height: 440),
+      styleMask: [.borderless], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false; window.contentView = view
+    try await Task.sleep(for: .milliseconds(200))
+    view.layoutSubtreeIfNeeded()
+    let bitmap = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+    view.cacheDisplay(in: view.bounds, to: bitmap)
+    try #require(bitmap.representation(using: .png, properties: [:])).write(to: output)
+    window.close()
+  }
+
   @Test func rendersSettingsOffscreenWhenRequested() async throws {
     guard let path = ProcessInfo.processInfo.environment["MGB_TEST_SETTINGS_OUTPUT"] else { return }
     let output = URL(fileURLWithPath: path, isDirectory: true)
