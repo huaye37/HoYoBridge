@@ -172,6 +172,7 @@ final class MiHoYoGameLaunchService: ObservableObject {
     try handle.write(contentsOf: Data(
       "MGB_CONFIG window=\(preferences.windowMode.rawValue) resolution=\(preferences.resolution.rawValue) fps_target=\(preferences.fpsUnlockMode.targetFPS ?? 60) graphics=game-managed\n".utf8
     ))
+    try handle.write(contentsOf: Data("MGB_COMPAT timeout_fix=\(environment["WINE_ENABLE_TIMEOUT_FIX"] == "1" ? "1" : "0")\n".utf8))
     launched.environment = environment
     launched.standardInput = FileHandle.nullDevice
     launched.standardOutput = handle
@@ -235,6 +236,12 @@ struct MiHoYoLaunchPlan {
   let dispatchScript: URL?
   let windowHelperArguments: [String]?
   let profileName: String
+
+  static func applyStartupCompatibility(for game: MiHoYoGame, to environment: inout [String: String]) {
+    // The pinned Wine includes the upstream GI/ZZZ curl-timeout compatibility patch.
+    // Scope this correction to ZZZ; do not change the already-validated other clients.
+    if game.baseGame == .zenlessZoneZero { environment["WINE_ENABLE_TIMEOUT_FIX"] = "1" }
+  }
 
   func prepareIfNeeded() async throws {
     if game.baseGame == .starRail {
@@ -321,6 +328,7 @@ struct MiHoYoLaunchPlan {
     let steam = "C:\\windows\\system32\\steam.exe"
     guard let window = NativeGameWindowSupport.resolve() else { throw MiHoYoLaunchError.runtimeAssetsMissing }
     var environment = generic.environment
+    Self.applyStartupCompatibility(for: game, to: &environment)
     window.apply(to: &environment, game: game)
     return Self(
       game: game,
