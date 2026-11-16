@@ -167,7 +167,7 @@ final class MiHoYoGameLaunchService: ObservableObject {
     let preferences = GameLaunchPreferences.load()
     launched.arguments = NativeGameWindowSupport.applyingResolution(preferences.resolution, to: plan.arguments)
     environment["MTL_HUD_ENABLED"] = preferences.metalHUDEnabled ? "1" : "0"
-    NativeGameWindowSupport.applyDisplayMode(preferences.windowMode, to: &environment)
+    NativeGameWindowSupport.applyDisplayMode(preferences.windowMode, to: &environment, resolution: preferences.resolution)
     NativeGameWindowSupport.applyFrameRate(preferences.fpsUnlockMode, to: &environment)
     try handle.write(contentsOf: Data(
       "MGB_CONFIG window=\(preferences.windowMode.rawValue) resolution=\(preferences.resolution.rawValue) fps_target=\(preferences.fpsUnlockMode.targetFPS ?? 60) graphics=game-managed\n".utf8

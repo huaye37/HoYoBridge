@@ -15,6 +15,8 @@ struct LauncherSettingsView: View {
     self._page = State(initialValue: Page(rawValue: initialPage) ?? .game)
   }
   @State private var resolutionOptions: [GameResolutionOption] = []
+  @State private var displays: [GameDisplay] = []
+  @AppStorage(GameDisplayCatalog.preferenceKey) private var targetDisplay = ""
   @State private var customWidth = ""
   @State private var customHeight = ""
   @State private var resolutionError: String?
@@ -60,6 +62,17 @@ struct LauncherSettingsView: View {
       case .game:
         Form {
           Section("画面") {
+            Picker("游戏显示器", selection: $targetDisplay) {
+              Text("自动选择横屏").tag("")
+              ForEach(displays) { display in
+                Text(display.title).tag(display.id).disabled(display.isPortrait)
+              }
+              if !targetDisplay.isEmpty && !displays.contains(where: { $0.id == targetDisplay }) {
+                Text("所选显示器已断开（暂用其他横屏）").tag(targetDisplay)
+              }
+            }
+            Text("已识别 \(displays.count) 块屏幕，\(displays.filter { !$0.isPortrait }.count) 块横屏可用于游戏。竖屏不自动分配游戏窗口。")
+              .font(.caption).foregroundStyle(.secondary)
             Picker("显示方式", selection: $windowModeRaw) {
               ForEach(GameWindowMode.allCases) { mode in
                 Text(mode.title).tag(mode.rawValue)
@@ -88,7 +101,9 @@ struct LauncherSettingsView: View {
             if let resolutionError { Text(resolutionError).font(.caption).foregroundStyle(.red) }
             Text("显示方式和启动分辨率应用于所有游戏；画质、语言及游戏内其他设置由各游戏独立管理。")
               .font(.caption).foregroundStyle(.secondary)
-            Text("窗口可拖动边缘缩放，左上角绿钮切换 macOS 全屏。列表包含显示器模式、常用比例及自定义尺寸；游戏内部可选项由游戏自身决定。")
+            Text("窗口可拖动边缘缩放，左上角绿钮切换 macOS 全屏。分辨率列表按所选横屏整理，并保留常用尺寸和自定义输入；HiDPI 渲染像素不等于面板物理分辨率。")
+              .font(.caption).foregroundStyle(.secondary)
+            Text("这里设置下次启动时的屏幕、窗口和尺寸，不实时修改正在运行的游戏。游戏内分辨率菜单由游戏决定，可能受当前显示器及原生全屏限制。")
               .font(.caption).foregroundStyle(.secondary)
           }
           Section {
@@ -135,10 +150,13 @@ struct LauncherSettingsView: View {
       reloadResolutions()
     }
     .onChange(of: resolutionRaw) { _, _ in reloadResolutions() }
+    .onChange(of: targetDisplay) { _, _ in reloadResolutions() }
   }
 
   private func reloadResolutions() {
-    resolutionOptions = GameResolutionCatalog.available
+    displays = GameDisplayCatalog.connected
+    let selected = GameDisplayCatalog.selected(in: displays, preferredID: targetDisplay)
+    resolutionOptions = GameResolutionCatalog.available(on: selected?.displayID)
     guard let current = GameResolution(rawValue: resolutionRaw) else { return }
     customWidth = String(current.width)
     customHeight = String(current.height)

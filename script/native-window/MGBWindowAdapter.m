@@ -30,6 +30,51 @@ static NSRect MGBFit(NSRect frame, NSRect visible) {
     return frame;
 }
 
+static NSScreen *MGBTargetScreen(NSWindow *window) {
+    const char *value=getenv("MGB_TARGET_DISPLAY_UUID");
+    NSString *wanted=value ? [NSString stringWithUTF8String:value] : @"";
+    NSScreen *fallback=nil;
+    for (NSScreen *screen in NSScreen.screens) {
+        if (NSHeight(screen.frame)>NSWidth(screen.frame)) continue;
+        if (!fallback) fallback=screen;
+        CGDirectDisplayID display=[screen.deviceDescription[@"NSScreenNumber"] unsignedIntValue];
+        CFUUIDRef uuid=CGDisplayCreateUUIDFromDisplayID(display);
+        if (!uuid) continue;
+        NSString *identifier=CFBridgingRelease(CFUUIDCreateString(NULL,uuid));
+        CFRelease(uuid);
+        if ([identifier caseInsensitiveCompare:wanted]==NSOrderedSame) return screen;
+    }
+    // Auto and disconnected selections use the same first landscape screen as settings.
+    return fallback ?: window.screen ?: NSScreen.mainScreen;
+}
+
+static NSSize MGBStartupSize(NSSize pixels, CGFloat scale, NSSize available) {
+    NSSize points=NSMakeSize(pixels.width/MAX(scale,1),pixels.height/MAX(scale,1));
+    CGFloat fit=MIN(1,MIN(available.width/points.width,available.height/points.height));
+    return NSMakeSize(points.width*fit,points.height*fit);
+}
+
+static void MGBPlaceInitialWindow(NSWindow *window) {
+    NSScreen *screen=MGBTargetScreen(window);
+    if (!screen) return;
+    NSRect visible=screen.visibleFrame;
+    NSRect frame=window.frame;
+    const char *width=getenv("MGB_STARTUP_PIXEL_WIDTH"), *height=getenv("MGB_STARTUP_PIXEL_HEIGHT");
+    NSInteger w=width?atoi(width):0, h=height?atoi(height):0;
+    if (w>=320 && h>=200 && w<=16384 && h<=16384) {
+        NSRect content=[window contentRectForFrameRect:visible];
+        NSSize size=MGBStartupSize(NSMakeSize(w,h),screen.backingScaleFactor,content.size);
+        frame=[window frameRectForContentRect:NSMakeRect(0,0,size.width,size.height)];
+    }
+    frame.origin=NSMakePoint(NSMidX(visible)-NSWidth(frame)/2,NSMidY(visible)-NSHeight(frame)/2);
+    window.contentMinSize=NSMakeSize(160,100);
+    window.contentMaxSize=NSMakeSize(CGFLOAT_MAX,CGFLOAT_MAX);
+    [window setFrame:MGBFit(frame,visible) display:YES];
+    fprintf(stderr,"MGB_WINDOW target_display=%u scale=%.1f startup_pixels=%ldx%ld frame=%.0fx%.0f\n",
+        [screen.deviceDescription[@"NSScreenNumber"] unsignedIntValue],screen.backingScaleFactor,
+        (long)w,(long)h,NSWidth(window.frame),NSHeight(window.frame));
+}
+
 typedef struct { BOOL visible; NSTimeInterval enteredAt; } MGBHoverState;
 static BOOL MGBHoverControls(MGBHoverState *state, NSRect screen, NSPoint mouse,
                              CGFloat menuHeight, CGFloat panelHeight,
@@ -242,6 +287,9 @@ static void MGBObserve(NSWindow *window) {
         recover.target=state; [menu addItem:recover];
         root.submenu=menu; [NSApp.mainMenu addItem:root];
     }
+    // Apply once only: later user moves/resizes and game settings are not repeatedly overwritten.
+    MGBPlaceInitialWindow(window);
+    state.savedFrame=window.frame;
     fprintf(stderr,"MGB_WINDOW attached; scale=%.1f\n",window.backingScaleFactor);
     const char *initialFullscreen=getenv("MGB_NATIVE_FULLSCREEN");
     if (initialFullscreen && !strcmp(initialFullscreen,"1")) {

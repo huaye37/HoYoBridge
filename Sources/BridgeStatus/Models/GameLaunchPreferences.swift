@@ -123,7 +123,7 @@ struct GameResolutionOption: Identifiable, Sendable {
     var details = [aspectRatio]
     if isCommon { details.insert("常用", at: 0) }
     if isCurrentDesktop { details.insert("当前桌面", at: 0) }
-    if isNativePixels { details.insert("原生像素", at: 0) }
+    if isNativePixels { details.insert("当前渲染像素", at: 0) }
     return "\(resolution.title)  ·  \(details.joined(separator: " · "))"
   }
 
@@ -144,6 +144,10 @@ struct GameResolutionOption: Identifiable, Sendable {
 
 enum GameResolutionCatalog {
   static var available: [GameResolutionOption] {
+    available(on: nil)
+  }
+
+  static func available(on displayID: CGDirectDisplayID?) -> [GameResolutionOption] {
     var resolutions = Set(commonResolutions)
     var currentDesktop = Set<GameResolution>()
     var nativePixels = Set<GameResolution>()
@@ -169,10 +173,12 @@ enum GameResolutionCatalog {
 
     let modeOptions = [kCGDisplayShowDuplicateLowResolutionModes as String: true] as CFDictionary
     for display in displays.prefix(Int(displayCount)) {
+      if let displayID, display != displayID { continue }
       if let mode = CGDisplayCopyDisplayMode(display) {
         let logical = GameResolution(width: mode.width, height: mode.height)
         let pixels = GameResolution(width: mode.pixelWidth, height: mode.pixelHeight)
-        resolutions.formUnion([logical, pixels])
+        if logical.width >= logical.height { resolutions.insert(logical) }
+        if pixels.width >= pixels.height { resolutions.insert(pixels) }
         currentDesktop.insert(logical)
         nativePixels.insert(pixels)
       }
@@ -193,7 +199,7 @@ enum GameResolutionCatalog {
     currentDesktop: Set<GameResolution>,
     nativePixels: Set<GameResolution>
   ) -> [GameResolutionOption] {
-    resolutions.map {
+    resolutions.filter { $0.width >= $0.height }.map {
       GameResolutionOption(
         resolution: $0,
         isCurrentDesktop: currentDesktop.contains($0),

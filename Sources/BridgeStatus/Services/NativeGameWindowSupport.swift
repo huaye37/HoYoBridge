@@ -27,8 +27,13 @@ struct NativeGameWindowSupport {
     environment["DYLD_INSERT_LIBRARIES"] = adapter.path
   }
 
-  static func applyDisplayMode(_ mode: GameWindowMode, to environment: inout [String: String]) {
+  static func applyDisplayMode(_ mode: GameWindowMode, to environment: inout [String: String], resolution: GameResolution? = nil) {
     environment["MGB_NATIVE_FULLSCREEN"] = mode == .fullScreen ? "1" : "0"
+    environment["MGB_TARGET_DISPLAY_UUID"] = UserDefaults.standard.string(forKey: GameDisplayCatalog.preferenceKey) ?? ""
+    if let resolution {
+      environment["MGB_STARTUP_PIXEL_WIDTH"] = String(resolution.width)
+      environment["MGB_STARTUP_PIXEL_HEIGHT"] = String(resolution.height)
+    }
   }
 
   static func applyingResolution(_ resolution: GameResolution, to arguments: [String]) -> [String] {

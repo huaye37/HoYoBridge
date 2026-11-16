@@ -22,6 +22,10 @@ int main(void) {
         // A 5K drawable occupies 2560x1440 points at 2x, not 5120x2880 points.
         NSSize drawable=NSMakeSize(5120,2880);
         assert(drawable.width/2==2560 && drawable.height/2==1440);
+        assert(NSEqualSizes(MGBStartupSize(NSMakeSize(3840,2160),2,NSMakeSize(2560,1400)),NSMakeSize(1920,1080)));
+        NSSize fitted=MGBStartupSize(NSMakeSize(3840,2160),2,NSMakeSize(1512,900));
+        assert(fitted.width<=1512 && fitted.height<=900);
+        assert(fabs(fitted.width/fitted.height-16.0/9.0)<0.001);
         MGBTestDelegate *original=[MGBTestDelegate new];
         [NSApplication sharedApplication];
         NSWindow *testWindow=[NSWindow new];
@@ -42,6 +46,23 @@ int main(void) {
         assert(ordinary.collectionBehavior & NSWindowCollectionBehaviorFullScreenPrimary);
         NSButton *green=[ordinary standardWindowButton:NSWindowZoomButton];
         assert(green.enabled && green.target && green.action==@selector(toggle:));
+        for (NSScreen *target in NSScreen.screens) {
+            if (NSHeight(target.frame)>NSWidth(target.frame)) continue;
+            CGDirectDisplayID display=[target.deviceDescription[@"NSScreenNumber"] unsignedIntValue];
+            CFUUIDRef uuid=CGDisplayCreateUUIDFromDisplayID(display);
+            NSString *identifier=CFBridgingRelease(CFUUIDCreateString(NULL,uuid));
+            CFRelease(uuid);
+            setenv("MGB_TARGET_DISPLAY_UUID",identifier.UTF8String,1);
+            setenv("MGB_STARTUP_PIXEL_WIDTH","1920",1);
+            setenv("MGB_STARTUP_PIXEL_HEIGHT","1080",1);
+            assert(MGBTargetScreen(ordinary)==target);
+            MGBPlaceInitialWindow(ordinary);
+            assert(NSContainsRect(target.visibleFrame,ordinary.frame));
+            NSRect content=[ordinary contentRectForFrameRect:ordinary.frame];
+            assert(fabs(content.size.width*target.backingScaleFactor-1920)<2);
+            assert(fabs(content.size.height*target.backingScaleFactor-1080)<2);
+        }
+        unsetenv("MGB_TARGET_DISPLAY_UUID");unsetenv("MGB_STARTUP_PIXEL_WIDTH");unsetenv("MGB_STARTUP_PIXEL_HEIGHT");
         [ordinary close];
         NSRect screen=NSMakeRect(0,0,1440,900);
         MGBHoverState hover={NO,-1};

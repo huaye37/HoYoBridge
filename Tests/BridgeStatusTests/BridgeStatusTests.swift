@@ -208,7 +208,7 @@ struct BridgeStatusTests {
     )
     #expect(options.map(\.resolution) == [current, native, .compact])
     #expect(options[0].title.contains("当前桌面"))
-    #expect(options[1].title.contains("原生像素"))
+    #expect(options[1].title.contains("当前渲染像素"))
     #expect(options[2].title.contains("常用"))
     #expect(options[2].title.contains("16:9"))
   }

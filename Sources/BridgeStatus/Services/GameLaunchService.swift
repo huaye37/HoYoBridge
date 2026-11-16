@@ -435,7 +435,7 @@ final class GameLaunchService: ObservableObject {
     environment["LANG"] = "zh_CN.UTF-8"
     environment["LC_ALL"] = "zh_CN.UTF-8"
     NativeGameWindowSupport.resolve()?.apply(to: &environment, game: .genshin)
-    NativeGameWindowSupport.applyDisplayMode(preferences.windowMode, to: &environment)
+    NativeGameWindowSupport.applyDisplayMode(preferences.windowMode, to: &environment, resolution: preferences.resolution)
     if benchmark || preferences.metalHUDEnabled {
       environment["MTL_HUD_ENABLED"] = "1"
     }
