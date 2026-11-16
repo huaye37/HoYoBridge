@@ -10,6 +10,15 @@ struct GameMigrationProgress: Equatable, Sendable {
   var fraction: Double { totalBytes == 0 ? 0 : Double(completedBytes) / Double(totalBytes) }
 }
 
+struct GameMigrationPublicationFailure: LocalizedError {
+  let copy: URL
+  let destination: URL
+  let underlying: Error
+  var errorDescription: String? {
+    "文件已复制并校验，但切换目录失败：\(underlying.localizedDescription)。已保留副本：\(copy.path)"
+  }
+}
+
 enum GameStorageError: LocalizedError {
   case invalidGame, destinationExists, nestedDestination, unsupportedFile, insufficientSpace
   case readOnly, changedDuringCopy, verificationFailed, publishFailed
@@ -59,7 +68,7 @@ enum GameStorageManager {
   }
 
   static func migrate(
-    source: URL, to container: URL, game: MiHoYoGame = .genshin,
+    source: URL, to container: URL, game: MiHoYoGame = .genshin, resuming partial: URL? = nil,
     progress: @Sendable (GameMigrationProgress) async -> Void = { _ in }
   ) async throws -> URL {
     try Task.checkCancellation()
@@ -84,10 +93,21 @@ enum GameStorageManager {
       volume.freeDiskBytes - total >= 1_073_741_824
     else { throw GameStorageError.insufficientSpace }
 
-    let staging = container.appending(path: ".mgb-migration-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false)
-    // Only this operation's private staging directory is ever removed; the source is untouched.
-    defer { try? FileManager.default.removeItem(at: staging) }
+    let staging = partial ?? container.appending(path: ".mgb-migration-\(UUID().uuidString)")
+    if partial != nil {
+      guard staging.deletingLastPathComponent().standardizedFileURL.path == container.path,
+        staging.lastPathComponent.hasPrefix(".mgb-migration-"),
+        staging.standardizedFileURL.path == staging.resolvingSymlinksInPath().standardizedFileURL.path else { throw GameStorageError.unsupportedFile }
+      let expected = Dictionary(uniqueKeysWithValues: entries.map { ($0.path, $0.directory) })
+      for entry in try inventory(staging) {
+        guard expected[entry.path] == entry.directory else { throw GameStorageError.unsupportedFile }
+      }
+    } else {
+      try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false)
+    }
+    // A fully verified copy must survive publication errors (especially on network volumes).
+    var verified = false
+    defer { if !verified && partial == nil { try? FileManager.default.removeItem(at: staging) } }
     var copied: UInt64 = 0
     var lastReport = Date.distantPast
     for entry in entries {
@@ -95,17 +115,25 @@ enum GameStorageManager {
       let input = source.appending(path: entry.path)
       let output = staging.appending(path: entry.path)
       if entry.directory {
-        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: false)
+        if !exists(output) { try FileManager.default.createDirectory(at: output, withIntermediateDirectories: false) }
+        continue
+      }
+      if partial != nil, exists(output),
+        (try output.resourceValues(forKeys: [.fileSizeKey])).fileSize == Int(entry.size),
+        try hash(input) == hash(output) {
+        copied += entry.size
+        await progress(.init(completedBytes: copied, totalBytes: total, phase: "正在复核并复用已复制文件"))
         continue
       }
       let descriptor = open(input.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
       guard descriptor >= 0 else { throw GameStorageError.changedDuringCopy }
       let reader = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
-      guard FileManager.default.createFile(atPath: output.path, contents: nil) else {
+      let outputDescriptor = open(output.path, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0o644)
+      guard outputDescriptor >= 0 else {
         try? reader.close()
         throw GameStorageError.readOnly
       }
-      let writer = try FileHandle(forWritingTo: output)
+      let writer = FileHandle(fileDescriptor: outputDescriptor, closeOnDealloc: true)
       do {
         var digest = SHA256()
         var fileBytes: UInt64 = 0
@@ -137,12 +165,49 @@ enum GameStorageManager {
     guard try inventory(source) == entries else { throw GameStorageError.changedDuringCopy }
     _ = try recognize(staging, game: game)
     try Task.checkCancellation()
-    // Exclusive rename prevents a concurrently created destination from being overwritten.
-    guard renamex_np(staging.path, destination.path, UInt32(RENAME_EXCL)) == 0 else {
-      if exists(destination) { throw GameStorageError.destinationExists }
-      throw GameStorageError.publishFailed
+    verified = true
+    do { try publishVerifiedCopy(staging, to: destination) }
+    catch {
+      throw GameMigrationPublicationFailure(copy: staging, destination: destination, underlying: error)
     }
     return destination
+  }
+
+  static func publishVerifiedCopy(_ staging: URL, to destination: URL) throws {
+    guard staging.deletingLastPathComponent().standardizedFileURL.path == destination.deletingLastPathComponent().standardizedFileURL.path,
+      staging.lastPathComponent.hasPrefix(".mgb-migration-") else { throw GameStorageError.publishFailed }
+    if renamex_np(staging.path, destination.path, UInt32(RENAME_EXCL)) == 0 { return }
+    let exclusiveError = errno
+    if exists(destination) { throw GameStorageError.destinationExists }
+    guard exclusiveError == ENOTSUP || exclusiveError == EOPNOTSUPP else {
+      throw NSError(domain: NSPOSIXErrorDomain, code: Int(exclusiveError))
+    }
+    // SMB may reject RENAME_EXCL. Atomically reserve our own empty destination first.
+    // Ordinary rename can replace that empty directory, but cannot overwrite a nonempty one.
+    guard mkdir(destination.path, 0o700) == 0 else {
+      if errno == EEXIST { throw GameStorageError.destinationExists }
+      throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+    }
+    var reserved = stat()
+    guard lstat(destination.path, &reserved) == 0 else { throw GameStorageError.publishFailed }
+    var published = false
+    defer {
+      var current = stat()
+      if !published, lstat(destination.path, &current) == 0,
+        current.st_ino == reserved.st_ino, current.st_dev == reserved.st_dev {
+        // rmdir never deletes files somebody else created inside this reservation.
+        _ = rmdir(destination.path)
+      }
+    }
+    var current = stat()
+    guard lstat(destination.path, &current) == 0,
+      current.st_ino == reserved.st_ino, current.st_dev == reserved.st_dev else {
+      throw GameStorageError.destinationExists
+    }
+    guard rename(staging.path, destination.path) == 0 else {
+      throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+    }
+    published = true
   }
 
   // Called only after a successful safety backup, when the user requests repair/update.
@@ -193,7 +258,9 @@ enum GameStorageManager {
   }
 
   private static func hash(_ url: URL) throws -> SHA256.Digest {
-    let handle = try FileHandle(forReadingFrom: url)
+    let descriptor = open(url.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+    guard descriptor >= 0 else { throw GameStorageError.unsupportedFile }
+    let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
     defer { try? handle.close() }
     var digest = SHA256()
     while let buffer = try handle.read(upToCount: 4 * 1024 * 1024), !buffer.isEmpty {

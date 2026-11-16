@@ -31,7 +31,8 @@ final class OfficialGameInstaller: ObservableObject {
     if engineStorageRoot.standardizedFileURL != GameRuntimePaths.userStorageRoot.standardizedFileURL {
       return busy.union(checking).union(cleaningDownloads).union(Self.outstandingGames(defaults: defaults))
     }
-    return Self.occupiedGames
+    return Self.occupiedGames.union(busy).union(checking).union(cleaningDownloads)
+      .union(Self.outstandingGames(defaults: defaults))
   }
   private var downloadTasks: [MiHoYoGame: Task<Void, Never>] = [:]
   private var enginePrefix: URL { engineStorageRoot.appending(path: region.engineDirectory + "/prefix") }
@@ -536,6 +537,12 @@ final class OfficialGameInstaller: ObservableObject {
     defaults.string(forKey: "games.\(game.rawValue).migrationCopy").map { URL(fileURLWithPath: $0, isDirectory: true) }
   }
 
+  func migrationPartial(_ game: MiHoYoGame) -> URL? {
+    guard let path = defaults.string(forKey: "games.\(game.rawValue).migrationPartial"),
+      defaults.string(forKey: "games.\(game.rawValue).migrationPartialSource") == game.configuredDirectory(defaults: defaults)?.path else { return nil }
+    return URL(fileURLWithPath: path, isDirectory: true)
+  }
+
   func migrateGame(_ game: MiHoYoGame, from source: URL, to container: URL) {
     guard game.region == region, !isOccupied, !blocksLaunch(for: game),
       game.configuredDirectory(defaults: defaults)?.standardizedFileURL.path == source.standardizedFileURL.path,
@@ -543,6 +550,7 @@ final class OfficialGameInstaller: ObservableObject {
     busy.insert(game)
     migrationProgress[game] = .init(completedBytes: 0, totalBytes: 0, phase: "正在准备迁移")
     messages[game] = "正在准备迁移，原文件保留"
+    diagnostics.record("migration_started_" + game.rawValue)
     migrationTasks[game] = Task {
       defer {
         busy.remove(game); migrationProgress.removeValue(forKey: game)
@@ -561,8 +569,10 @@ final class OfficialGameInstaller: ObservableObject {
           ["ready", "need_update"].contains(record["status"] as? String ?? "") else {
           throw Failure("后台客户端尚未空闲，请完成下载、校验或更新后再迁移。")
         }
+        let partial = migrationPartial(game)
+        let seed = partial?.deletingLastPathComponent().standardizedFileURL.path == container.standardizedFileURL.path ? partial : nil
         let copier = Task.detached(priority: .utility) {
-          try await GameStorageManager.migrate(source: source, to: container, game: game) { value in
+          try await GameStorageManager.migrate(source: source, to: container, game: game, resuming: seed) { value in
             await MainActor.run { self.migrationProgress[game] = value }
           }
         }
@@ -570,12 +580,24 @@ final class OfficialGameInstaller: ObservableObject {
         // Keep a recovery pointer before touching the official installation record.
         defaults.set(copied.path, forKey: "games.\(game.rawValue).migrationCopy")
         defaults.set(source.path, forKey: "games.\(game.rawValue).migrationSource")
+        if seed != nil {
+          defaults.removeObject(forKey: "games.\(game.rawValue).migrationPartial")
+          defaults.removeObject(forKey: "games.\(game.rawValue).migrationPartialSource")
+        }
         try Task.checkCancellation()
         try await completeMigrationAssociation(game, source: source, target: copied)
+      } catch let error as GameMigrationPublicationFailure {
+        defaults.set(error.copy.path, forKey: "games.\(game.rawValue).migrationCopy")
+        defaults.set(error.destination.path, forKey: "games.\(game.rawValue).migrationDestination")
+        defaults.set(source.path, forKey: "games.\(game.rawValue).migrationSource")
+        messages[game] = error.localizedDescription + "。可从菜单完成迁移关联，无需重新复制。"
+        diagnostics.record("migration_publish_failed_" + game.rawValue, code: Int32((error.underlying as NSError).code))
       } catch is CancellationError {
         messages[game] = migrationCopy(game) == nil ? "迁移已取消，原文件和启动路径未改变。" : "复制已完成，尚未切换位置；可从菜单完成迁移关联。"
+        diagnostics.record("migration_cancelled_" + game.rawValue)
       } catch {
         messages[game] = "迁移未完成：\(error.localizedDescription) 原文件保留。" + (migrationCopy(game) == nil ? "" : " 新副本已校验，可从菜单重试迁移关联。")
+        diagnostics.record("migration_failed_" + game.rawValue, code: Int32((error as NSError).code))
       }
     }
   }
@@ -593,11 +615,21 @@ final class OfficialGameInstaller: ObservableObject {
     }
   }
 
-  private func completeMigrationAssociation(_ game: MiHoYoGame, source: URL, target: URL) async throws {
+  private func completeMigrationAssociation(_ game: MiHoYoGame, source: URL, target originalTarget: URL) async throws {
+    var target = originalTarget
     guard game.configuredDirectory(defaults: defaults)?.standardizedFileURL.path == source.standardizedFileURL.path else {
       throw Failure("原安装路径已经改变，未自动切换。")
     }
     _ = try GameStorageManager.recognize(target, game: game)
+    if let path = defaults.string(forKey: "games.\(game.rawValue).migrationDestination") {
+      let destination = URL(fileURLWithPath: path, isDirectory: true)
+      if let issue = GameClientDirectoryPolicy.issue(for: destination, client: game,
+        locations: GameClientDirectoryPolicy.locations(defaults: defaults)) { throw Failure(issue) }
+      try GameStorageManager.publishVerifiedCopy(target, to: destination)
+      target = destination
+      defaults.set(destination.path, forKey: "games.\(game.rawValue).migrationCopy")
+      defaults.removeObject(forKey: "games.\(game.rawValue).migrationDestination")
+    }
     if let issue = GameClientDirectoryPolicy.issue(for: target, client: game,
       locations: GameClientDirectoryPolicy.locations(defaults: defaults)) { throw Failure(issue) }
     migrationProgress[game] = .init(completedBytes: 0, totalBytes: 0, phase: "正在切换启动和更新路径")
@@ -612,6 +644,7 @@ final class OfficialGameInstaller: ObservableObject {
     defaults.removeObject(forKey: "games.\(game.rawValue).migrationSource")
     updates.remove(game)
     messages[game] = "迁移完成，启动和更新已切换到新位置；原副本保留，可在确认游戏正常后自行清理。"
+    diagnostics.record("migration_succeeded_" + game.rawValue)
   }
 
   enum DirectoryStatus: Equatable { case linked, unregistered, conflict, unavailable }

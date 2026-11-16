@@ -4,6 +4,63 @@ import Testing
 
 @MainActor
 struct GameMigrationTests {
+  @Test func retainedPartialIsRevalidatedAndOnlyIncompleteFilesAreRewritten() async throws {
+    let game = MiHoYoGame.starRail
+    let (root, source, container) = try fixture(game)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let partial = container.appending(path: ".mgb-migration-retained-test")
+    try FileManager.default.createDirectory(at: partial.appending(path: "StarRail_Data"), withIntermediateDirectories: true)
+    let good = partial.appending(path: "StarRail.exe")
+    try FileManager.default.copyItem(at: source.appending(path: "StarRail.exe"), to: good)
+    let oldDate = Date(timeIntervalSince1970: 1_000_000)
+    try FileManager.default.setAttributes([.modificationDate: oldDate], ofItemAtPath: good.path)
+    try Data("truncated".utf8).write(to: partial.appending(path: "StarRail_Data/payload"))
+    let result = try await GameStorageManager.migrate(source: source, to: container, game: game, resuming: partial)
+    #expect(try result.appending(path: "StarRail.exe").resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate == oldDate)
+    #expect(try Data(contentsOf: result.appending(path: "StarRail_Data/payload")) == Data(contentsOf: source.appending(path: "StarRail_Data/payload")))
+    #expect(!FileManager.default.fileExists(atPath: partial.path))
+  }
+
+  @Test func realSMBPublicationWhenRequested() async throws {
+    guard let path = ProcessInfo.processInfo.environment["MGB_TEST_MIGRATION_SMB_ROOT"] else { return }
+    let parent = URL(fileURLWithPath: path, isDirectory: true)
+    let volumes = FileManager.default.mountedVolumeURLs(includingResourceValuesForKeys: nil) ?? []
+    #expect(!MiHoYoGame.isInstallationDiskOffline(parent, mountedVolumes: volumes))
+    let volume = try InstallVolumeProbe.inspect(parent, isDefaultPreview: false)
+    #expect(volume.isNetwork)
+    let (root, source, _) = try fixture(.starRail)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let container = parent.appending(path: ".mgb-smb-validation-\(UUID())", directoryHint: .isDirectory)
+    try FileManager.default.createDirectory(at: container, withIntermediateDirectories: false)
+    defer { try? FileManager.default.removeItem(at: container) }
+    let result = try await GameStorageManager.migrate(source: source, to: container, game: .starRail)
+    #expect(try Data(contentsOf: result.appending(path: "StarRail_Data/payload")) == Data(contentsOf: source.appending(path: "StarRail_Data/payload")))
+    #expect(FileManager.default.fileExists(atPath: source.appending(path: "StarRail.exe").path))
+    #expect(try FileManager.default.contentsOfDirectory(atPath: container.path) == [source.lastPathComponent])
+  }
+
+  @Test func publicationConflictRetainsVerifiedCopyAndCanBeRetried() async throws {
+    let game = MiHoYoGame.starRail
+    let (root, source, container) = try fixture(game)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let target = container.appending(path: source.lastPathComponent)
+    do {
+      _ = try await GameStorageManager.migrate(source: source, to: container, game: game) { progress in
+        if progress.phase == "正在校验新副本" && !FileManager.default.fileExists(atPath: target.path) {
+          try? Data("keep-other-file".utf8).write(to: target, options: .withoutOverwriting)
+        }
+      }
+      Issue.record("Expected publication conflict")
+    } catch let error as GameMigrationPublicationFailure {
+      #expect(try Data(contentsOf: target) == Data("keep-other-file".utf8))
+      #expect(try GameStorageManager.recognize(error.copy, game: game).path == error.copy.path)
+      try FileManager.default.removeItem(at: target) // Only this test's deliberately injected file.
+      try GameStorageManager.publishVerifiedCopy(error.copy, to: error.destination)
+      #expect(try GameStorageManager.recognize(target, game: game).path == target.path)
+      #expect(FileManager.default.fileExists(atPath: source.appending(path: "StarRail.exe").path))
+    }
+  }
+
   private func fixture(_ game: MiHoYoGame) throws -> (URL, URL, URL) {
     let root = FileManager.default.temporaryDirectory.appending(path: "migration-\(UUID())").resolvingSymlinksInPath()
     let source = root.appending(path: "Source \(game.rawValue)")

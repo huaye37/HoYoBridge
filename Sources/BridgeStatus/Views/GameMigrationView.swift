@@ -22,6 +22,10 @@ struct GameMigrationView: View {
       Text("复制游戏文件 → 校验完整性 → 自动切换启动和更新路径")
         .foregroundStyle(.secondary)
       if let source { Text("当前位置：\(source.path)").font(.callout).textSelection(.enabled) }
+      if installer.migrationPartial(game) != nil {
+        Text("已保留上次复制的文件；选择原目标可重新校验并复用，损坏或未完成的文件才会重复制。")
+          .font(.caption).foregroundStyle(.secondary)
+      }
       if let destination, let source {
         Text("新位置：\(destination.url.appending(path: source.lastPathComponent).path)")
           .font(.callout).textSelection(.enabled)
@@ -67,6 +71,11 @@ struct GameMigrationView: View {
     }
     .padding(24).frame(width: 600)
     .background(Color(nsColor: .windowBackgroundColor))
+    .onAppear {
+      if let partial = installer.migrationPartial(game) {
+        destination = try? InstallVolumeProbe.inspect(partial.deletingLastPathComponent(), isDefaultPreview: false)
+      }
+    }
   }
 
   private func selectDestination() {
