@@ -63,7 +63,7 @@
 
 ### 获取应用
 
-前往 [最新 Release](https://github.com/huaye37/HoYoBridge/releases/latest)，在页面底部 **Assets** 下载 `HoYoBridge-macOS-arm64.zip`，解压后将 `HoYoBridge.app` 拖入「应用程序」。普通用户无需克隆源码或自行编译。
+前往 [最新 Release](https://github.com/huaye37/HoYoBridge/releases/latest)，在页面底部 **Assets** 选择发行说明中推荐的安装包，解压后将 `HoYoBridge.app` 拖入「应用程序」。**0.1.13 推荐 `HoYoBridge-macOS-arm64-light.zip` 轻量包**；启动器内更新自动使用轻量包。普通用户无需克隆源码或自行编译。
 
 每个新版本都直接发布到 **GitHub Releases**，提供安装包、SHA-256 校验文件和中文版本日志，不再标记 Pre-release。发布日志列出新增功能、改进与修复、升级方式及已知问题；历史版本保留在 [全部 Releases](https://github.com/huaye37/HoYoBridge/releases)。Release 分类不改变签名状态：当前应用仍未完成 Apple 公证。
 
@@ -79,6 +79,8 @@ HoYoBridge-macOS-arm64.zip.sha256
 ```bash
 shasum -a 256 -c HoYoBridge-macOS-arm64.zip.sha256
 ```
+
+使用轻量包时，下载其对应的 `HoYoBridge-macOS-arm64-light.zip.sha256`，执行 `shasum -a 256 -c HoYoBridge-macOS-arm64-light.zip.sha256`。完整包与轻量包二选一即可。
 
 当前应用使用 ad-hoc 完整性签名，尚未完成 Apple 公证。首次打开被系统拦截时，确认来源与文件完整性后，按「系统设置 → 隐私与安全性」提示打开；无需全局关闭系统安全功能。
 
