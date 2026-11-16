@@ -4,42 +4,44 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>HoYoBridge</title>
         <item>
-            <title>0.1.15</title>
-            <pubDate>Mon, 16 Nov 2026 19:25:06 +0800</pubDate>
-            <sparkle:version>0.1.15</sparkle:version>
-            <sparkle:shortVersionString>0.1.15</sparkle:shortVersionString>
+            <title>0.1.16</title>
+            <pubDate>Mon, 16 Nov 2026 21:24:17 +0800</pubDate>
+            <sparkle:version>0.1.16</sparkle:version>
+            <sparkle:shortVersionString>0.1.16</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# 星桥 HoYoBridge 0.1.15
+            <description sparkle:format="markdown"><![CDATA[# 星桥 HoYoBridge 0.1.16
 
 发布日期：2026 年 11 月 16 日
 
 ## 改进与修复
 
-- 补齐绝区零国服／国际服启动路径中遗漏的 `WINE_ENABLE_TIMEOUT_FIX=1`，启用固定 Wine 已包含、上游对同类启动问题推荐的请求超时兼容处理。
-- 启动日志新增 `MGB_COMPAT timeout_fix`，方便判断配置是否真正传入。
-- 保持原神、星铁及崩坏 3 配置不变；不更换 Wine，不替换游戏文件，不修改系统 hosts 或代理。
+- 修复部分 SMB 网络磁盘在文件复制、校验完成后，因不支持独占目录重命名而导致迁移失败的问题。
+- 兼容处理先独占创建空目标目录，再切换已校验副本；不覆盖已有同名目录，也不删除原游戏。
+- 最后一步目录切换失败时保留已校验副本，并记录恢复位置；通过「完成迁移关联」重试，不再丢弃整份副本重新复制。
+- 补充迁移阶段诊断记录；恢复已登记的临时副本时重新校验，仅重复制不完整或校验不一致的文件。
 
 ## 升级方式
 
-- 在「设置 → 应用更新」确认安装，然后重新启动绝区零。无需迁移或重新下载游戏。
-- `HoYoBridge-macOS-arm64.zip` 为轻量包。Apple Silicon、macOS 26 及以上；应用为 ad-hoc 签名，尚未完成 Apple 公证，更新目录及 ZIP 使用 Sparkle Ed25519 签名。
+- 在「设置 → 应用更新 → 检查更新」确认安装 0.1.16，然后从游戏「… → 迁移游戏位置」自行开始迁移。
+- 原游戏、账号和兼容环境不受此次启动器更新影响。迁移成功后原副本仍保留，确认新位置正常后再自行清理。
+- Apple Silicon、macOS 26 及以上；轻量包采用 ad-hoc 签名，尚未完成 Apple 公证，更新目录及 ZIP 使用 Sparkle Ed25519 签名。
 
 ## 验证情况与已知问题
 
-- 国际服 3.3.0 使用同一 NAS 游戏目录、隔离 prefix，启用修正后三次启动均运行 40 秒并越过原崩溃阶段；诊断日志确认 Wine 实际执行 timeout 修正。
-- 本轮原配置两次也成功，因此尚不能证明全部偶发闪退已经消除。用户正式环境、持续游玩和国服未完成实机验收。
-- 已校验三个启动关键文件与官方安装清单一致，没有证据要求重新下载游戏。游戏内分辨率问题不在本次修复范围。
-- [查看调查证据与边界](https://github.com/huaye37/HoYoBridge/blob/main/docs/ZZZ_STARTUP_DIAGNOSIS_2026-11-16.md)
+- 已在真实 SMB 挂载上复现旧调用返回「Operation not supported」，修正后的测试客户端复制、校验和目录切换通过。
+- 覆盖八个客户端的复制校验、目标冲突保留、关联失败重试及保留副本复用测试。
+- 大体积星铁迁移按用户要求中止并删除了临时副本，原游戏和启动路径保持不变；不将小文件测试描述为完整游戏迁移或迁移后游玩通过。
+- 网络盘逐文件校验需读取副本，不能消除网络和磁盘本身的耗时。复制阶段强制退出的自动发现和恢复不在本次验证范围内。
 
 ## 完整变更
 
-[查看 v0.1.14 → v0.1.15 的代码变更](https://github.com/huaye37/HoYoBridge/compare/v0.1.14...v0.1.15)
+[查看 v0.1.15 → v0.1.16 的代码变更](https://github.com/huaye37/HoYoBridge/compare/v0.1.15...v0.1.16)
 ]]></description>
-            <enclosure url="https://github.com/huaye37/HoYoBridge/releases/download/v0.1.15/HoYoBridge-macOS-arm64.zip" length="8517568" type="application/octet-stream" sparkle:edSignature="cqr84WhCAIXoJni5XG5q734D+wwGM9N7y+1ITnE2zEONSRkYGf3qNImHNK9h+tOOK5uYhTGyN3tdlpxuylypBA=="></enclosure>
+            <enclosure url="https://github.com/huaye37/HoYoBridge/releases/download/v0.1.16/HoYoBridge-macOS-arm64.zip" length="8537888" type="application/octet-stream" sparkle:edSignature="NF46AAU7Wziq8C9rNgwGyNlPcr2LICxvPIreZ/ZgTqJqzq4S9f0WsAdyrwujBy3K3dxB2LEKxEhc7sPTHt6JDw=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: gtgbPy2Ni9vO6OF5ZcHzu14wzCR3Q9evz95NrfvjrLUoa0l6+LNrv7bw9afrekQ6DY+/lfWH5J7lEMrHrqFhDg==
-length: 2812
+edSignature: eOXgsnsNrvG7wXQfZ92RxwxiiTvz+I+jprl0cvABKLkH2HJhWhYp44s/RzPb5OJnAgfTCAbV2/VrgQ2TIwgdCw==
+length: 3100
 -->
