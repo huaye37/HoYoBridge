@@ -4,6 +4,12 @@ struct NativeGameWindowSupport {
   let adapter: URL
   let helper: URL
 
+  static func helperDelay(for game: MiHoYoGame) -> Duration {
+    // ZZZ 3.3 reproducibly crashes during protection initialization when the Win32
+    // window watcher starts first. The native AppKit adapter remains active immediately.
+    game.baseGame == .zenlessZoneZero ? .seconds(32) : .zero
+  }
+
   static func resolve(resourceURL: URL? = Bundle.main.resourceURL) -> Self? {
     guard let root = resourceURL?.appending(path: "RuntimeAssets") else { return nil }
     let result = Self(adapter: root.appending(path: "libMGBWindowAdapter.dylib"),
@@ -60,4 +66,21 @@ struct NativeGameWindowSupport {
   func arguments(for game: MiHoYoGame) -> [String] {
     ["Z:" + helper.path.replacingOccurrences(of: "/", with: "\\"), Self.titles(for: game), "--watch"]
   }
+}
+
+@MainActor
+final class DeferredWindowHelper {
+  private var task: Task<Void, Never>?
+
+  func schedule(delay: Duration, isCurrent: @escaping @MainActor () -> Bool,
+    start: @escaping @MainActor () -> Void) {
+    cancel()
+    task = Task {
+      do { try await Task.sleep(for: delay) } catch { return }
+      guard !Task.isCancelled, isCurrent() else { return }
+      start()
+    }
+  }
+
+  func cancel() { task?.cancel(); task = nil }
 }

@@ -11,6 +11,7 @@ final class MiHoYoGameLaunchService: ObservableObject {
 
   private var gameProcess: Process?
   private var helperProcess: Process?
+  private let deferredWindowHelper = DeferredWindowHelper()
   private var logHandle: FileHandle?
   private var launchTask: Task<Void, Never>?
   private let genshin = GameLaunchService()
@@ -89,6 +90,7 @@ final class MiHoYoGameLaunchService: ObservableObject {
     }
     launchTask?.cancel()
     launchTask = nil
+    deferredWindowHelper.cancel()
     helperProcess?.terminate()
     gameProcess?.terminate()
     state = .stopping
@@ -173,10 +175,15 @@ final class MiHoYoGameLaunchService: ObservableObject {
       "MGB_CONFIG window=\(preferences.windowMode.rawValue) resolution=\(preferences.resolution.rawValue) fps_target=\(preferences.fpsUnlockMode.targetFPS ?? 60) graphics=game-managed\n".utf8
     ))
     try handle.write(contentsOf: Data("MGB_COMPAT timeout_fix=\(environment["WINE_ENABLE_TIMEOUT_FIX"] == "1" ? "1" : "0")\n".utf8))
+    if GameStartupReadiness.requiresFreshServer(for: plan.game) {
+      try handle.write(contentsOf: Data("MGB_COMPAT fresh_session=1 window_helper_delay=32\n".utf8))
+    }
     launched.environment = environment
     launched.standardInput = FileHandle.nullDevice
     launched.standardOutput = handle
     launched.standardError = handle
+    let helperDelay = NativeGameWindowSupport.helperDelay(for: plan.game)
+    var preparedHelper: Process?
     if let helperArguments = plan.windowHelperArguments {
       let helper = Process()
       helper.executableURL = plan.wine
@@ -185,8 +192,12 @@ final class MiHoYoGameLaunchService: ObservableObject {
       helper.standardInput = FileHandle.nullDevice
       helper.standardOutput = handle
       helper.standardError = handle
-      try helper.run()
-      helperProcess = helper
+      if helperDelay == .zero {
+        try helper.run()
+        helperProcess = helper
+      } else {
+        preparedHelper = helper
+      }
     }
 
     try launched.run()
@@ -197,6 +208,23 @@ final class MiHoYoGameLaunchService: ObservableObject {
     activeGame = plan.game
     stateGame = plan.game
     state = .running
+    if let helper = preparedHelper {
+      try? handle.write(contentsOf: Data("MGB_WINDOW helper_deferred_seconds=32\n".utf8))
+      deferredWindowHelper.schedule(delay: helperDelay, isCurrent: { [weak self, weak launched] in
+        guard let self, let launched else { return false }
+        return self.gameProcess === launched && launched.isRunning && self.state == .running
+      }, start: { [weak self] in
+        guard let self else { return }
+        do {
+          try helper.run()
+          self.helperProcess = helper
+          try? handle.write(contentsOf: Data("MGB_WINDOW helper_started_after_initialization\n".utf8))
+        } catch {
+          // A window enhancement must not turn a successfully launched game into a failure.
+          try? handle.write(contentsOf: Data("MGB_WINDOW helper_start_failed code=\((error as NSError).code)\n".utf8))
+        }
+      })
+    }
     if preferences.hideAfterLaunch { NSApp.hide(nil) }
 
     Task { [weak self, weak launched] in
@@ -209,6 +237,7 @@ final class MiHoYoGameLaunchService: ObservableObject {
 
   private func finish(exitStatus: Int32? = nil) {
     let finishedGame = activeGame ?? stateGame
+    deferredWindowHelper.cancel()
     helperProcess?.terminate()
     helperProcess = nil
     gameProcess = nil
@@ -261,6 +290,13 @@ struct MiHoYoLaunchPlan {
     let stubs = try await SteamStubAssets.resolveOrDownload()
     try RuntimeAssetInstaller.installSteamStubs(stubs: stubs, prefix: prefix)
     try GameWindowPreferences.apply(game: game, wine: wine, environment: environment, resolution: GameLaunchPreferences.load().resolution)
+    if GameStartupReadiness.requiresFreshServer(for: game) {
+      // Registry preparation starts Wine too. Let that session finish so Steam is
+      // the first long-lived entry in the game session, not reg.exe/window-flags.exe.
+      try await GameStartupReadiness.waitForPrefixIdle(
+        wineserver: wine.deletingLastPathComponent().appending(path: "wineserver"),
+        environment: environment)
+    }
   }
 
   private func prepareManagedStarRailPrefix() throws {
@@ -457,6 +493,40 @@ struct MiHoYoLaunchPlan {
       }
     }
     return nil
+  }
+}
+
+enum GameStartupReadiness {
+  static func requiresFreshServer(for game: MiHoYoGame) -> Bool {
+    game.baseGame == .zenlessZoneZero
+  }
+
+  static func waitForPrefixIdle(wineserver: URL, environment: [String: String],
+    timeout: Duration = .seconds(20)) async throws {
+    try Task.checkCancellation()
+    let waiter = Process()
+    waiter.executableURL = wineserver
+    waiter.arguments = ["-w"]
+    waiter.environment = environment
+    waiter.standardInput = FileHandle.nullDevice
+    waiter.standardOutput = FileHandle.nullDevice
+    waiter.standardError = FileHandle.nullDevice
+    try waiter.run()
+    // This is only the waiting client, never `wineserver -k` or another game's server.
+    defer { if waiter.isRunning { waiter.terminate() } }
+    let deadline = ContinuousClock.now.advanced(by: timeout)
+    while waiter.isRunning {
+      try Task.checkCancellation()
+      guard ContinuousClock.now < deadline else {
+        throw NSError(domain: "HoYoBridge.Startup", code: 1,
+          userInfo: [NSLocalizedDescriptionKey: "绝区零运行环境仍被占用，请关闭残留的绝区零窗口后重试；未停止其他游戏或下载。"])
+      }
+      try await Task.sleep(for: .milliseconds(100))
+    }
+    guard waiter.terminationStatus == 0 else {
+      throw NSError(domain: "HoYoBridge.Startup", code: Int(waiter.terminationStatus),
+        userInfo: [NSLocalizedDescriptionKey: "等待绝区零准备环境退出失败，请查看启动日志后重试。"])
+    }
   }
 }
 

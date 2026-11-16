@@ -4,6 +4,26 @@ import Testing
 
 struct NativeGameWindowSupportTests {
   @Test(arguments: MiHoYoGame.allCases)
+  func onlyZenlessDefersWindowWatcher(_ game: MiHoYoGame) {
+    #expect(NativeGameWindowSupport.helperDelay(for: game) == (game.baseGame == .zenlessZoneZero ? .seconds(32) : .zero))
+  }
+
+  @Test @MainActor func deferredWatcherHonorsCancellationAndLaunchIdentity() async throws {
+    let scheduler = DeferredWindowHelper()
+    var starts = 0
+    scheduler.schedule(delay: .milliseconds(10), isCurrent: { true }, start: { starts += 1 })
+    scheduler.cancel()
+    try await Task.sleep(for: .milliseconds(30))
+    #expect(starts == 0)
+    scheduler.schedule(delay: .milliseconds(10), isCurrent: { false }, start: { starts += 1 })
+    try await Task.sleep(for: .milliseconds(30))
+    #expect(starts == 0)
+    scheduler.schedule(delay: .milliseconds(10), isCurrent: { true }, start: { starts += 100 })
+    scheduler.schedule(delay: .milliseconds(10), isCurrent: { true }, start: { starts += 1 })
+    try await Task.sleep(for: .milliseconds(50))
+    #expect(starts == 1)
+  }
+  @Test(arguments: MiHoYoGame.allCases)
   func isolatedWindowConfiguration(_ game: MiHoYoGame) {
     let support = NativeGameWindowSupport(
       adapter: URL(fileURLWithPath: "/Applications/Bridge/adapter.dylib"),
