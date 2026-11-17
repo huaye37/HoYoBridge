@@ -66,6 +66,11 @@ enum MiHoYoGame: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
+  var storageRecommendation: String? {
+    guard baseGame == .zenlessZoneZero else { return nil }
+    return "推荐安装在本机磁盘。网络盘不推荐用于游玩；外置 SSD 请确认接口、线材及实际读写稳定。"
+  }
+
   var defaultDirectory: URL {
     if region == .global {
       return baseGame.defaultDirectory.deletingLastPathComponent()

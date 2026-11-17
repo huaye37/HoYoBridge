@@ -21,6 +21,10 @@ struct GameMigrationView: View {
       Text("迁移\(game.clientTitle)").font(.title2.bold())
       Text("复制游戏文件 → 校验完整性 → 自动切换启动和更新路径")
         .foregroundStyle(.secondary)
+      if let advice = game.storageRecommendation {
+        Label(advice, systemImage: "internaldrive")
+          .font(.callout).foregroundStyle(.secondary)
+      }
       if let source { Text("当前位置：\(source.path)").font(.callout).textSelection(.enabled) }
       if installer.migrationPartial(game) != nil {
         Text("已保留上次复制的文件；选择原目标可重新校验并复用，损坏或未完成的文件才会重复制。")

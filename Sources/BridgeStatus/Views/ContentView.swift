@@ -110,8 +110,15 @@ private struct MiHoYoGameDetailView: View {
           .font(.system(size: 15))
           .foregroundStyle(.white.opacity(0.95))
         if game.region == .global {
-          Text("国际服下载管理已接入，游戏启动兼容性尚待实测")
+          Text(game == .zenlessZoneZeroGlobal
+            ? "国际服 3.3.0 已有本机磁盘正常启动反馈，持续游玩仍待验证"
+            : "国际服下载管理已接入，游戏启动兼容性尚待实测")
             .font(.system(size: 12)).foregroundStyle(.white.opacity(0.75))
+        }
+        if let advice = game.storageRecommendation {
+          Label(advice, systemImage: "internaldrive")
+            .font(.system(size: 12)).foregroundStyle(.white.opacity(0.85))
+            .fixedSize(horizontal: false, vertical: true)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)

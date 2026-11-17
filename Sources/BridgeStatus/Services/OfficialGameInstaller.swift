@@ -809,6 +809,7 @@ final class OfficialGameInstaller: ObservableObject {
     let choice = NSAlert()
     choice.messageText = "安装\(game.clientTitle)"
     choice.informativeText = "推荐位置：\(game.defaultDirectory.path)\n只安装当前游戏，也可以选择外置硬盘。"
+    if let advice = game.storageRecommendation { choice.informativeText += "\n\n" + advice }
     choice.addButton(withTitle: "使用推荐位置")
     choice.addButton(withTitle: "更改位置…")
     choice.addButton(withTitle: "取消")
@@ -819,6 +820,7 @@ final class OfficialGameInstaller: ObservableObject {
     let panel = NSOpenPanel()
     panel.title = "选择\(game.title)安装位置"
     panel.message = "只安装当前游戏，文件将存放在所选位置的独立子文件夹。"
+    if let advice = game.storageRecommendation { panel.message += "\n" + advice }
     panel.canChooseFiles = false
     panel.canChooseDirectories = true
     panel.canCreateDirectories = true
